@@ -42,12 +42,23 @@ p4<-lnf %>%
   geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
   theme_light()
 
+(p3+p4)+plot_annotation(tag_levels = 'a')
 
-(p3+p4)+plot_annotation(tag_levels = 'A')
+
+p5<-lnf %>% 
+  ggplot(aes(x=Micro, y=log(ngr), color=Micro))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6, width = 0.15)+
+theme_light()
 
 
-lnf %>% 
-  ggplot(aes(x=Micro, y=log(ngr/totalArea), color=Micro, fill=Micro))+geom_boxplot()+geom_jitter()
+p6<-lnf %>% 
+  ggplot(aes(x=Micro, y=log(ngr/totalArea), color=Micro))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +
+  theme_light()
+
+(p5+p6)+plot_annotation(tag_levels= 'a')
+
+
 
 
 dt %>% 

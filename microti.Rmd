@@ -48,7 +48,7 @@ La distribuzione dell'area totale (fig.1-a)è simile tra i linfonodi Negativi e 
 Complessivamente sono presenti nei 103 linfonodi 3686 granulomi. Il numero di granulomi per linfonodo ha una distribuzione fortemente asimmetrica(fig.2-a): la stragrande maggioranza dei linfonodi esaminati ha pochissimi granulomi e pochi sono i linfonodi con un numero elevato di granulomi. 
 Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in linfonodi microbiologicamente negativi che positivi (fig.2-b) 
 
-```{r}
+```{r echo=FALSE}
 p3<-lnf %>% 
   filter(Micro=="P") %>% 
   ggplot()+
@@ -66,4 +66,21 @@ p4<-lnf %>%
 (p3+p4)+plot_annotation(tag_levels = 'a')
 
 ```
+La distribuzione del  numero di granulomi per linfonodo condizionalmente allo stato microbiologico è descritta nel seguente grafico. 
 
+```{r echo=FALSE}
+p5<-lnf %>% 
+  ggplot(aes(x=Micro, y=log(ngr), color=Micro))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6, width = 0.15)+
+theme_light()
+
+
+p6<-lnf %>% 
+  ggplot(aes(x=Micro, y=log(ngr/totalArea), color=Micro))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +
+  theme_light()
+
+(p5+p6)+plot_annotation(tag_levels= 'a')
+```
+
+Si può osservare un ampia variabilità in entrambi le classi  microbiologiche sia usando i dati osservati che dopo normalizzazione con l'area totale del linfonodo. Il grafico suggerisce che mediamente si osservano più granulomi per linfondo nei  casi di positività a microti 
