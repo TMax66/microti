@@ -1,0 +1,69 @@
+---
+title: "microti data: exploratory analysis"
+output: html_notebook
+---
+
+Il dataset microti è costituito da 3868 osservazioni e 10 variabili.
+E' un dataset a struttura gerarchica: due livelli nidificati di osservazioni.
+Il primo livello è costituito dalle informazioni relative al singolo Linfondo:
+IdLinf (identificativo campione), totalArea ( area totale esaminata del linfonodo), numero di granulomi osservati, esito microbiologico (PCR pos/neg).Complessivamente sono raccolte informazioni da 103 Linfonodi. 
+Il secondo livello, nidificato sotto Linfonodo, è rappresentato dalle informazioni relative ai singoli granulomi esaminati per ogni linfonodo: Area del granuloma, Grado istologico, MNC, NAF e Completezza. Complessivamente sono stati esaminati 3868 granulomi. 
+
+
+```{r include=FALSE}
+setwd("~/gitProgetti/microti")
+source("~/gitProgetti/basicpkg.R")
+dt <- read_excel("MICROTI definitive - modified.xlsx")
+dt$IDGr<-1:nrow(dt)
+lnf<- dt %>% 
+    select(Idlinf, Micro,totalArea) %>% 
+  group_by(Idlinf, Micro,totalArea) %>% 
+  mutate(ngr=n()) %>% 
+  unique()
+```
+### Linfonodi
+
+Il 18% dei linfonodi (19) sono risultati positivi all'esame microbiologico.
+La distribuzione dell'area del linfonodo è  asimmetrica con una coda verso destra che rappresenta pochi linfonodi caraterizzati da un'area totale molto ampia (fig.1)
+
+```{r echo=FALSE}
+p1<-lnf %>% 
+  ggplot()+
+  geom_density(aes(x=totalArea), adjust=2)+
+  geom_rug(aes(x = totalArea, y = 0), position = position_jitter(height = 0))+
+  theme_light()
+p2<-lnf %>% 
+  ggplot()+
+  geom_density(aes(x=totalArea,colour = Micro), adjust=2)+
+  geom_rug(aes(x = totalArea, y = 0), position = position_jitter(height = 0))+
+  theme_light()
+library(patchwork)
+
+(p1+p2)+plot_annotation(tag_levels = 'a')
+
+```
+
+La distribuzione dell'area totale (fig.1-a)è simile tra i linfonodi Negativi e Positivi all'esame microbiologico; in questi ultimi sembra esserci un maggior numero di linfonodi con area più ampia (parte curva più ampia a destra)(fig.1-b)
+
+Complessivamente sono presenti nei 103 linfonodi 3686 granulomi. Il numero di granulomi per linfonodo ha una distribuzione fortemente asimmetrica(fig.2-a): la stragrande maggioranza dei linfonodi esaminati ha pochissimi granulomi e pochi sono i linfonodi con un numero elevato di granulomi. 
+Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in linfonodi microbiologicamente negativi che positivi (fig.2-b) 
+
+```{r}
+p3<-lnf %>% 
+  filter(Micro=="P") %>% 
+  ggplot()+
+  geom_density(aes(x=ngr), adjust=0.5)+
+  geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
+  theme_light()
+
+p4<-lnf %>% 
+  ggplot()+
+  geom_density(aes(x=ngr, colour=Micro), adjust=0.5)+
+  geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
+  theme_light()
+
+
+(p3+p4)+plot_annotation(tag_levels = 'a')
+
+```
+
