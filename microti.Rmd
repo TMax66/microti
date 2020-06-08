@@ -1,6 +1,8 @@
 ---
-title: "microti data: exploratory analysis"
-output: html_notebook
+title: 'microti data: exploratory analysis'
+output:
+  html_document:
+    df_print: paged
 ---
 
 Il dataset microti è costituito da 3868 osservazioni e 10 variabili.
@@ -43,10 +45,10 @@ library(patchwork)
 
 ```
 
-La distribuzione dell'area totale (fig.1-a)è simile tra i linfonodi Negativi e Positivi all'esame microbiologico; in questi ultimi sembra esserci un maggior numero di linfonodi con area più ampia (parte curva più ampia a destra)(fig.1-b)
+La distribuzione dell'area totale (a)è simile tra i linfonodi Negativi e Positivi all'esame microbiologico; in questi ultimi sembra esserci un maggior numero di linfonodi con area più ampia (parte curva più ampia a destra)(b)
 
-Complessivamente sono presenti nei 103 linfonodi 3686 granulomi. Il numero di granulomi per linfonodo ha una distribuzione fortemente asimmetrica(fig.2-a): la stragrande maggioranza dei linfonodi esaminati ha pochissimi granulomi e pochi sono i linfonodi con un numero elevato di granulomi. 
-Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in linfonodi microbiologicamente negativi che positivi (fig.2-b) 
+Complessivamente sono presenti nei 103 linfonodi 3686 granulomi. Il numero di granulomi per linfonodo ha una distribuzione fortemente asimmetrica(a): la stragrande maggioranza dei linfonodi esaminati ha pochissimi granulomi e pochi sono i linfonodi con un numero elevato di granulomi. 
+Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in linfonodi microbiologicamente negativi che positivi (b) 
 
 ```{r echo=FALSE}
 p3<-lnf %>% 
@@ -66,6 +68,7 @@ p4<-lnf %>%
 (p3+p4)+plot_annotation(tag_levels = 'a')
 
 ```
+
 La distribuzione del  numero di granulomi per linfonodo condizionalmente allo stato microbiologico è descritta nel seguente grafico. 
 
 ```{r echo=FALSE}
@@ -83,4 +86,96 @@ p6<-lnf %>%
 (p5+p6)+plot_annotation(tag_levels= 'a')
 ```
 
-Si può osservare un ampia variabilità in entrambi le classi  microbiologiche sia usando i dati osservati che dopo normalizzazione con l'area totale del linfonodo. Il grafico suggerisce che mediamente si osservano più granulomi per linfondo nei  casi di positività a microti 
+Si può osservare un ampia variabilità in entrambi le classi  microbiologiche sia usando i dati osservati che dopo normalizzazione con l'area totale del linfonodo. Il grafico suggerisce che mediamente si osservano più granulomi per linfondo nei  casi di positività a microti
+
+### Granulomi
+La dimensione dei 3686 granulomi risulta molto variabile e fortemente asimmetrica. Il 75% dei granulomi ha un area compresa tra 1133 e 193041, il restante 25% tra 193041 e 165663191. 
+
+Nel seguente grafico è riportata la distribuzione del numero di granulomi in base alla classificazione per grado istologico (a); si osserva lo stesso pattern sia tra i granulomi di linfonodi microbiologicamente positivi che negativi (b). 
+I granulomi da linf pos sono prevalentemente di grado 1 e 2, mentre il grado 3 e 4 è più frequente tra i i granulomi dei linfonodi negativi.
+```{r echo=FALSE}
+p7<-dt%>% 
+  group_by(Grgrade) %>% 
+  summarise(n=n()) %>% 
+  arrange(desc(n)) %>% 
+  mutate(reg=factor(Grgrade, unique(Grgrade))) %>% 
+  ggplot(aes(x=reg, y=n))+
+  geom_bar(stat="identity", position=position_dodge(), width = 0.6,fill="steelblue")+
+  labs(x="grado istologico", y="N.granulomi")+
+  theme(axis.text=element_text(size=12))+theme_light()+
+  geom_text(aes(label=n), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")
+  
+
+
+p8<-dt%>% 
+  group_by(Grgrade, Micro) %>% 
+  summarise(n=n()) %>% 
+  arrange(n) %>% 
+  mutate(reg=Grgrade) %>% 
+  ggplot(aes(x=reg, y=n, fill=Micro))+
+  geom_bar(stat="identity", position=position_dodge(), width = 0.9)+
+  labs(x="grado istologico", y="N.granulomi")+
+  theme(axis.text=element_text(size=12))+theme_light()+
+    geom_text(aes(label=n), vjust=1.6, color="white",
+              position = position_dodge(0.9), size=3.5)+
+    scale_fill_brewer(palette="Paired")
+  
+
+(p7+p8)+plot_annotation(tag_levels= 'a') 
+
+```
+
+Nel figura seguente è riportato la distibuzione complessiva di MNC (a) che risulta marcatamente asimmetrica (la stragrande maggioranza dei granulomi osservati ha meno di 10 MNC); lo stesso pattern si osserva tra i diversi gradi istologici (b), con differenze da indagare e tra granulomi da linfonodi con differente status microbiologico (c)
+
+```{r echo=FALSE,warning=FALSE}
+p9<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= MNC), adjust=2)+
+  geom_rug(aes(x = MNC,y = 0), position = position_jitter(height = 0))+
+  theme_light()+xlim(0,30)
+
+p10<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= MNC, colour=as.factor(Grgrade)), adjust=2)+
+  geom_rug(aes(x =  MNC,y = 0), position = position_jitter(height = 0))+
+  theme_light()+xlim(0,30)
+
+p11<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= MNC, colour=as.factor(Grgrade)), adjust=2)+
+  geom_rug(aes(x = MNC,y = 0), position = position_jitter(height = 0))+
+  theme_light()+facet_grid(~Micro)+xlim(0,30)
+
+
+(p9+p10)/p11+plot_annotation(tag_levels = 'a')
+
+```
+
+Nel figura seguente è riportato la distibuzione complessiva di NAF (a) che risulta marcatamente asimmetrica: è un riscontro molto raro individuare batteri acido-resistenti; lo stesso pattern si osserva tra i diversi gradi istologici (b),  e tra granulomi da linfonodi con differente status microbiologico (c)
+```{r echo=FALSE,warning=FALSE}
+p12<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= NAF), adjust=2)+
+  geom_rug(aes(x = NAF,y = 0), position = position_jitter(height = 0))+
+  theme_light()+xlim(0,5)
+
+p13<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= NAF, colour=as.factor(Grgrade)), adjust=2)+
+  geom_rug(aes(x =  NAF,y = 0), position = position_jitter(height = 0))+
+  theme_light()+xlim(0,5)
+
+p14<-dt%>% 
+  ggplot()+
+  geom_density(aes(x= NAF, colour=as.factor(Grgrade)), adjust=2)+
+  geom_rug(aes(x = NAF,y = 0), position = position_jitter(height = 0))+
+  theme_light()+facet_grid(~Micro)+xlim(0,5)
+
+
+(p12+p13)/p14+plot_annotation(tag_levels = 'a')
+
+```
+
+
