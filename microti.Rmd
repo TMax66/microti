@@ -54,14 +54,14 @@ Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in l
   
 
 ```{r echo=FALSE}
-p3<-lnf %>% 
+p3 <- lnf %>% 
   filter(Micro=="P") %>% 
   ggplot()+
   geom_density(aes(x=ngr), adjust=0.5)+
   geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
   theme_light()
 
-p4<-lnf %>% 
+p4 <- lnf %>% 
   ggplot()+
   geom_density(aes(x=ngr, colour=Micro), adjust=0.5)+
   geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
@@ -91,26 +91,8 @@ dt %>%
 ```
 
 <p style="color:red">
-Il confronto tra gradi deve essere fatto condizionalmente allo stato microbiologico, data la struttura gerarchica dei dati.
+Il grafico si può fare ma non sono sicuro però che abbia senso... perchè lo stesso linfonodo può contribuire con granulomi di diverso grado quindi diventa difficile stabilire se e in che modo il grado istologico (variabili misurata a livello di singolo granuloma -gerarchicamente livello 1) influenza la relazione tra numero di granulomi e status microbiologico (variabili misurate a a livello di singolo linfonodo -gerarchicamente livello 2)
 </p>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -141,7 +123,7 @@ Questi grafici sono molto interessanti perché possono avere significato biologi
 
 
 <p style="color:red">
-In realtà è già stato fatto con la suddivisione del numero di granulomi per grado e stato microbiologico, ve lo ripropongo  </p>
+In realtà è già stato fatto con la suddivisione del numero di granulomi per grado e stato microbiologico, ve lo ripropongo, ma riflettendoci su vale quanto scritto prima... il grafico si può fare ma non ha senso o almeno non si può usare il grado istologico per predire lo status microbiologico</p>
 
 ```{r echo=FALSE, fig.height=4, fig.width=6}
 dt%>% 
@@ -203,30 +185,33 @@ dt%>%
 <p style="color:blue">
 Sempre ricollegandoci a questi grafici volevamo chiederti se fosse possibile costruirne degli altri nei quali, al posto del numero di granulomi per linfonodo, potesse essere considerato come dato (2A) la somma delle aree dei vari gradi </p>
 
-```{r echo=FALSE, fig.height=4, fig.width=10 }
- dt %>% 
-    select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>% 
-    group_by(Idlinf, Micro,Grgrade) %>% 
-    summarise(SumnArea=sum(Grarea)) %>% 
-    ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+
-    geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) + 
-    theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi in base a status microbiologico e grado istologico") 
 
-```
+<!-- ```{r echo=FALSE, fig.height=4, fig.width=10 } -->
+<!--  dt %>%  -->
+<!--     select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>%  -->
+<!--     group_by(Idlinf, Micro,Grgrade) %>%  -->
+<!--     summarise(SumnArea=sum(Grarea)) %>%  -->
+<!--     ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+ -->
+<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +  -->
+<!--     theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi in base a status microbiologico e grado istologico")  -->
+
+<!-- ``` -->
+
 
 <p style="color:blue">
 e (2B) dei singoli gradi (normalizzati per l’area linfonodale analizzata) sempre mantenendo la differenza tra microbiologico positivo vs negativo. </p>
 
-```{r echo=FALSE, fig.height=4, fig.width=10 }
- dt %>% 
-    select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>% 
-    group_by(Idlinf, Micro,Grgrade) %>% 
-    mutate(nArea=Grarea/totalArea) %>% 
-    summarise(SumnArea=sum(nArea)) %>% 
-    ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+
-    geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) + 
-    theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi  normalizzate per l'area totale del linfonodo in base a status microbiologico e grado istologico") 
-```
+
+<!-- ```{r echo=FALSE, fig.height=4, fig.width=10 } -->
+<!--  dt %>%  -->
+<!--     select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>%  -->
+<!--     group_by(Idlinf, Micro,Grgrade) %>%  -->
+<!--     mutate(nArea=Grarea/totalArea) %>%  -->
+<!--     summarise(SumnArea=sum(nArea)) %>%  -->
+<!--     ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+ -->
+<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +  -->
+<!--     theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi  normalizzate per l'area totale del linfonodo in base a status microbiologico e grado istologico")  -->
+<!-- ``` -->
 
 
 
@@ -240,29 +225,29 @@ In realtà, data la natura gerarchica dei dati, non è possibile predire lo stua
 
 
 
-
-Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei grafici successivi, valutare in questo senso (2C) le aree dei gradi 1+2 vs gradi 3+4, poiché ipotizziamo per esempio che a parità di area linfonodale analizzata, i linfonodi con un’elevata area totale dei gradi 1+2 (indice di mancato contenimento dell’infezione) siano più frequentemente positivi all’esame microbiologico.
-
-
-
-
-
-
-
-
-
-
 <p style="color:blue">
-In pratica valutare se a parità di area linfonodale considerata, i linfonodi aventi un’area totale di granulomi in generale (1+2+3+4) o un’area totale dei granulomi di grado X superiore ad una certa soglia sono predittivi per positività microbiologica. </p>
-
-
-
-
+Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei grafici successivi, valutare in questo senso (2C) le aree dei gradi 1+2 vs gradi 3+4, poiché ipotizziamo per esempio che a parità di area linfonodale analizzata, i linfonodi con un’elevata area totale dei gradi 1+2 (indice di mancato contenimento dell’infezione) siano più frequentemente positivi all’esame microbiologico.
+In pratica valutare se a parità di area linfonodale considerata, i linfonodi aventi un’area totale di granulomi in generale (1+2+3+4) o un’area totale dei granulomi di grado X superiore ad una certa soglia sono predittivi per positività microbiologica.
 Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei grafici successivi, valutare in questo senso (2C) le aree dei gradi 1+2 vs gradi 3+4, poiché ipotizziamo per esempio che a parità di area linfonodale analizzata, i linfonodi con un’elevata area totale dei gradi 1+2 (indice di mancato contenimento dell’infezione) siano più frequentemente positivi all’esame microbiologico.
 </p>
 
 
+<p style="color:red">
+Come già detto su, non è possibile. La distribuzione del grado istologico varia da linfonodo a linfonodo e quindi anche varibili come dimensione dei granulomi nei diversi gradi istologici, o numero di granulomi dei diversi gradi istologici. Una rappresentazione grafica o tabellare  corretta dovrebbe prevedere un grafico /tabella per singolo linfonodo... cioè 103 grafici/tabelle... 
+In questo grafico ho campionato casualmente 20 linfonodi e costruito per ogni linfonodo come si distribuisce il numero di granulomi in base al grado istologico e lo stato microbiologico dei linfonodi. In sostanza la variabilità tra linfonodo, rispetto alle variabili osservate a livello di granuloma è molto elevata quindi non aggregando il dato si perde questa informazione</p>
 
+```{r echo=FALSE}
+linfo<-unique(dt$Idlinf)
+s<-sample(linfo, 20)
+
+dt %>% 
+  filter(Idlinf %in% s) %>% 
+  group_by(Idlinf,Grgrade, Micro) %>% 
+  summarise(ngr=sum(n())) %>% 
+  ggplot(aes(x=as.factor(Grgrade),y=log(ngr), fill=Micro))+
+  geom_bar(stat="identity", position=position_dodge(), width = 0.6) +
+  facet_wrap(~Idlinf)
+```
 
 
 
@@ -271,8 +256,63 @@ Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei 
 ### Granulomi
 La dimensione dei 3686 granulomi risulta molto variabile e fortemente asimmetrica. Il 75% dei granulomi ha un area compresa tra 1133 e 193041, il restante 25% tra 193041 e 165663191. 
 
+<p style="color:blue">
+Volevamo chiederti se (3) fosse possibile eseguire lo stesso calcolo ma differenziando i vari gradi, dicendo per esempio che i granulomi di 4 grado hanno un’area variabile da A a B con dimensione media C. Inoltre, una volta calcolate le dimensioni dei vari gradi, ti chiederemmo se fosse possibile (4) calcolare il diametro medio dei vari gradi, dato che in letteratura viene spesso riportato il diametro e non l’area della lesione.</p>
+
+<p style="color:red">
+Anche in questo caso la variabilità della dimensione dei granulomi in base al grading istologico è differente tra i diversi linfonodi. Quindi non è corretto aggreggare la dimensione dei granulomi solo sulla base del grading ignorando il linfonodo di provenienza.
+Di seguito il grafico di un campione casuale di 20 linfonodi in cui per ogni grado istologico è riportata la distribuzione in quartili (25%-Mediana-75%) della dimensione  </p>
+
+```{r echo=FALSE, fig.height=6, fig.width=10}
+linfo<-unique(dt$Idlinf)
+set.seed(999)
+s<-sample(linfo, 20)
+
+dt %>% 
+  filter(Idlinf %in% s) %>% 
+  group_by(Idlinf,Grgrade, Grarea, Micro) %>% 
+  ggplot(aes(x=as.factor(Grgrade),y=log(Grarea)))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.4, width = 0.15, size=0.8, color="blue", shape=19)+
+  theme_light()+facet_wrap(~Idlinf)
+
+```
+
+<p style="color:red">
+Nel seguente grafico invece è riportata la distribuzione della dimensione dei granulomi di tutti i linfonodi in base al grado istologico.</p>
+
+```{r echo=FALSE}
+ dt %>% 
+  group_by(Grgrade, Grarea) %>% 
+  ggplot(aes(x=as.factor(Grgrade),y=log(Grarea)))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.4, width = 0.15, size=0.8, color="blue", shape=19)+facet_wrap(~Micro)+
+  theme_light()
+
+```
+
+
+```{r echo=FALSE, fig.height=15, fig.width=6, warning=FALSE}
+dt %>% 
+ # filter(Idlinf %in% s) %>% 
+  group_by(Idlinf,Micro, Grgrade) %>%
+  summarise(area=mean(Grarea)) %>%
+  arrange(area) %>% 
+  mutate(linf=factor(Idlinf, unique(Idlinf))) %>% 
+  ggplot(aes(x=linf,y=log(area), color=factor(Grgrade)))+
+  geom_point(size=2.3)+coord_flip()+theme_light()+facet_wrap(~Micro)
+
+```
+
+
+  
+
+
+
 Nel seguente grafico è riportata la distribuzione del numero di granulomi in base alla classificazione per grado istologico (a); si osserva lo stesso pattern sia tra i granulomi di linfonodi microbiologicamente positivi che negativi (b). 
 I granulomi da linf pos sono prevalentemente di grado 1 e 2, mentre il grado 3 e 4 è più frequente tra i i granulomi dei linfonodi negativi.
+
+
+
+
 ```{r echo=FALSE}
 p7<-dt%>% 
   group_by(Grgrade) %>% 
@@ -306,6 +346,13 @@ p8<-dt%>%
 (p7+p8)+plot_annotation(tag_levels= 'a') 
 
 ```
+
+
+
+
+
+
+
 
 Nel figura seguente è riportato la distibuzione complessiva di MNC (a) che risulta marcatamente asimmetrica (la stragrande maggioranza dei granulomi osservati ha meno di 10 MNC); lo stesso pattern si osserva tra i diversi gradi istologici (b), con differenze da indagare e tra granulomi da linfonodi con differente status microbiologico (c)
 

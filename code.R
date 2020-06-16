@@ -15,6 +15,36 @@ lnf<- dt %>%
   unique()
   
  
+lnf<- dt %>% 
+  select(Idlinf, Micro,totalArea, Grgrade) %>% 
+  group_by(Idlinf, Micro,totalArea) %>% 
+  mutate(ngr=n()) %>% 
+  unique()
+
+
+dt%>% 
+  group_by(Idlinf, Grgrade ) %>% 
+  summarise(n=n()) %>% 
+  arrange(n) %>% 
+  View()
+  
+  
+  mutate(reg=Grgrade) %>% 
+  ggplot(aes(x=reg, y=n))+
+  geom_bar(stat="identity", position=position_dodge(), width = 0.9)+
+  labs(x="grado istologico", y="N.granulomi")+
+  theme(axis.text=element_text(size=12))+theme_light()+
+  geom_text(aes(label=n), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")
+
+
+
+
+
+
+
+
 
 lnf %>% 
   ggplot()+
@@ -103,13 +133,16 @@ dt %>%
 
 
 
-linfo<-unique(dt$Idlinf)
-s<-sample(linfo, 20)
-
-dt %>% 
-  filter(Idlinf %in% s) %>% 
-  ggplot(aes(x=as.factor(Grgrade), y=log(MNC+1), color=Micro))+geom_boxplot() +
-  facet_wrap(~Idlinf)
+      linfo<-unique(dt$Idlinf)
+      s<-sample(linfo, 20)
+      
+      dt %>% 
+        filter(Idlinf %in% s) %>% 
+        group_by(Idlinf,Grgrade, Micro) %>% 
+        summarise(ngr=sum(n())) %>% 
+        ggplot(aes(x=as.factor(Grgrade),y=log(ngr), fill=Micro))+
+        geom_bar(stat="identity", position=position_dodge(), width = 0.6) +
+        facet_wrap(~Idlinf)
 
 
 dt %>% 
@@ -265,6 +298,7 @@ dt %>%
     group_by(Idlinf, Micro,Grgrade) %>% 
     mutate(nArea=Grarea/totalArea) %>% 
     summarise(SumnArea=sum(nArea)) %>% 
+    View()
     ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+
     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) + 
     theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma normalizzata delle singole aree dei granulomi in base a status microbiologico e grado istologico") 
@@ -300,9 +334,56 @@ dt %>%
   
 
 
+linfo<-unique(dt$Idlinf)
+set.seed(999)
+s<-sample(linfo, 20)
+
+dt %>% 
+ # filter(Idlinf %in% s) %>% 
+  group_by(Idlinf,Micro, Grgrade) %>%
+  summarise(area=mean(Grarea)) %>%
+  arrange(area) %>% 
+  mutate(linf=factor(Idlinf, unique(Idlinf))) %>% 
+  ggplot(aes(x=linf,y=log(area), color=factor(Grgrade)))+
+  geom_point(size=2.3)+coord_flip()+theme_light()+facet_wrap(~Micro)
+
+
+
+
+
+dt %>% 
+  group_by(Grgrade, Grarea) %>% 
+  ggplot(aes(x=as.factor(Grgrade),y=log(Grarea)))+
+  geom_boxplot(width=0.3)+geom_jitter(alpha=0.4, width = 0.15, size=0.8, color="blue", shape=19)+
+  theme_light()
+
+
+
+
   
-  
-  
+#################MIXED MODEL###############
+
+
+library(lme4)
+
+
+mod<-lmer(log(totalArea)~Micro+factor(Grgrade)+(1|Idlinf), data =dt )
+
+library(merTools)
+REsim(mod)             # mean, median and sd of the random effect estimates
+plotREsim(REsim(mod))
+
+
+library(sjPlot)
+
+p<-plot_model(mod)
+
+plot_grid(p)
+
+p$Micro
+p$Grgrade
+
+
 library(brms)
   
  
