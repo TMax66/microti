@@ -6,6 +6,138 @@ dt <- read_excel("MICROTI definitive - modified.xlsx")
 dt$IDGr<-1:nrow(dt)
 
 
+library(ggraph)
+library(igraph)
+library(tidyverse)
+
+dt %>% 
+  mutate(Grgrade=ifelse(Grgrade==1, "G1",
+                        ifelse(Grgrade==2, "G2", 
+                               ifelse(Grgrade==3, "G3", "G4")))) %>% 
+  mutate(Grgrade=factor(Grgrade, levels=c("G1", "G2", "G3","G4"))) %>% 
+  select(Idlinf, Micro,totalArea, Grgrade, MNC) %>% 
+  group_by(Idlinf, Micro,totalArea,Grgrade, MNC) %>% 
+  summarise(ngr=n()) %>% 
+  unique() %>% 
+  summarise(n=sum(ngr)) %>% 
+  pivot_wider( names_from = "Grgrade", values_from = n, values_fill = list(n=0))
+
+
+
+
+
+
+
+
+
+
+
+linfo<-unique(dt$Idlinf)
+set.seed(999)
+s<-sample(linfo, 20)
+
+dt2<-dt %>% 
+  filter(Idlinf %in% s) 
+
+
+gdt<-dt2 %>% 
+  mutate(level1=factor(rep("X", dim(.)[1])), 
+         level2=factor(Idlinf), 
+         level3=factor(IDGr)) %>% 
+  select(level1, level2, level3)
+
+edges_level1_2 <- gdt %>% select(level1, level2) %>% unique %>% rename(from=level1, to=level2)
+edges_level2_3 <- gdt %>% select(level2, level3) %>% unique %>% rename(from=level2, to=level3)
+edge_list=rbind(edges_level1_2, edges_level2_3)
+
+
+
+
+mygraph <- graph_from_data_frame( edge_list )
+
+ggraph(mygraph, layout = 'dendrogram', circular = FALSE)+ 
+  geom_edge_diagonal() +
+  geom_node_point() +
+  theme_void()
+
+
+
+library(DiagrammeR)
+x<-grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Helvetica, shape = rectangle, fontsize=6,]
+      edge [arrowhead = none, arrowtail = none]
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab3 [label = '@@3']
+      tab4 [label = '@@4']
+      tab5 [label = '@@5']
+      tab6 [label = '@@6']
+         
+  
+
+
+
+      # edge definitions with the node IDs
+      tab1 -> tab2;
+      tab1 -> tab3;
+      tab1 -> tab4;
+      tab1  ->  tab5;
+      
+      
+      }
+
+      [1]:  paste0('Linfonodo (IdLinf):\\n ', 'dimensione \\n', 'stato microbiologico \\n', 'n.di granulomi')
+      [2]:  paste0('granuloma (idgr):\\n ', 'dimensione \\n', 'grado istologico \\n', 'MNC \\n', 'NAF \\n')
+      [3]:  paste0('granuloma (idgr):\\n ', 'dimensione \\n', 'grado istologico \\n', 'MNC \\n', 'NAF \\n')
+      [4]:  paste0('granuloma (idgr):\\n ', 'dimensione \\n', 'grado istologico \\n', 'MNC \\n', 'NAF \\n')
+      [5]: 'livello 1'
+      [6]: 'livello 2'
+    
+
+
+      ")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 GGally::ggcorr(dt[,4:7], geom="text")
 
 lnf<- dt %>% 
@@ -26,9 +158,6 @@ dt%>%
   group_by(Idlinf, Grgrade ) %>% 
   summarise(n=n()) %>% 
   arrange(n) %>% 
-  View()
-  
-  
   mutate(reg=Grgrade) %>% 
   ggplot(aes(x=reg, y=n))+
   geom_bar(stat="identity", position=position_dodge(), width = 0.9)+
@@ -140,10 +269,23 @@ dt %>%
         filter(Idlinf %in% s) %>% 
         group_by(Idlinf,Grgrade, Micro) %>% 
         summarise(ngr=sum(n())) %>% 
+        ggplot(aes(x=as.factor(Grgrade),y=log(ngr)))+
+        geom_bar(aes(fill=Micro),stat="identity", position=position_dodge(), width = 0.6) +
+        facet_wrap(~Idlinf) 
+    
+  
+
+      
+      
+        dt %>% 
+        filter(Idlinf %in% s) %>% 
+        group_by(Idlinf,Grgrade, Micro) %>% 
+        summarise(ngr=sum(n())) %>% 
         ggplot(aes(x=as.factor(Grgrade),y=log(ngr), fill=Micro))+
         geom_bar(stat="identity", position=position_dodge(), width = 0.6) +
-        facet_wrap(~Idlinf)
-
+        facet_wrap(~Idlinf)    
+      
+      
 
 dt %>% 
   filter(Idlinf %in% s) %>% 
@@ -326,10 +468,13 @@ dt %>%
   
 dt %>% 
   mutate(MNCq=ifelse(MNC==0, 0, 1)) %>% 
+  mutate(NAFq=ifelse(NAF==0, 0, 1)) %>% 
+  group_by(Micro) %>% 
+  summarise(mean(MNCq), mean(NAFq))
   group_by(Idlinf, Grgrade, Micro) %>% 
   summarise(mncz=1-mean(MNCq)) %>% 
   ggplot(aes(x=Grgrade, y=mncz)) +
-  geom_bar(stat="identity") +
+  geom_point() +
   facet_wrap(~Micro)
   
 
@@ -364,24 +509,132 @@ dt %>%
 #################MIXED MODEL###############
 
 
-library(lme4)
+# library(lme4)
+# 
+# 
+# mod<-lmer(log(MNC+1)~Micro+factor(Grgrade)+log(NAF+1)+(1|Idlinf), data =dt )
+# 
+# library(merTools)
+# REsim(mod)             # mean, median and sd of the random effect estimates
+# plotREsim(REsim(mod))
+# 
+# 
+# library(sjPlot)
+# 
+# p<-plot_model(mod)
+# 
+# plot_grid(p)
+# 
+# p$Micro
+# p$Grgrade
+# 
 
 
-mod<-lmer(log(totalArea)~Micro+factor(Grgrade)+(1|Idlinf), data =dt )
 
-library(merTools)
-REsim(mod)             # mean, median and sd of the random effect estimates
-plotREsim(REsim(mod))
+####MODELLI ####
+
+ngr<-dt %>% 
+  select( "Idlinf", "totalArea",  "Grarea" , "MNC" , "Grgrade", 
+          "NAF", "Micro",  "IDGr" ) %>% 
+  group_by(Idlinf) %>%
+  summarise(ngr=n())
+
+dt2<-dt %>% 
+  full_join(ngr, by="Idlinf")
+
+
+
+# dt %>% 
+#   ggplot(aes(x=log(MNC+1)))+
+#   geom_histogram()
+# 
+# dt %>% 
+#   ggplot(aes(x=NAF))+
+#   geom_histogram()+xlim(-1,50)
+# 
+# 
+# 
+# dt %>% 
+#   summarise(m=mean(MNC), 
+#             s2=var(MNC), 
+#             r=s2/m)
+
+
+
+library(glmmTMB)
+
+m1 <- glmmTMB(MNC ~ as.factor(Grgrade)+(1|Idlinf),zi=~Micro,
+               family=nbinom2, data=dt2)
+
+
+m2 <- glmmTMB(MNC ~ as.factor(Grgrade)+scale(totalArea)+log(NAF+1)+log(ngr)+scale(Grarea)+Micro+(1|Idlinf),zi=~Micro,
+              family=nbinom2, data=dt2)
+
+
+
+
+
+
+
+
 
 
 library(sjPlot)
 
-p<-plot_model(mod)
+p<-plot_model(m2, show.intercept = FALSE, transform = NULL)
 
-plot_grid(p)
 
-p$Micro
-p$Grgrade
+
+count<-p[["data"]] %>% 
+  filter(wrap.facet=="conditional")
+
+
+
+Grade_2<-rnorm(1000000, -0.128191245,  0.06123946 )
+Grade_3<-rnorm(1000000, -0.267964545, 0.09482551  )
+Grade_4<-rnorm(100000, 0.837276044, 0.11846970)
+AreaLinf<-rnorm(100000, -0.574638176, 0.18887923)
+logNAF <- rnorm(100000, 0.059668159, 0.04481653)
+logNgr <- rnorm(100000, 0.148200418, 0.11113954)
+AreaGran <- rnorm(100000,  0.197207487, 0.02694107 )
+MicroP <- rnorm(100000,  -0.008527956,  0.36117827 )
+
+
+dx<-data.frame( Grade_2, Grade_3, Grade_4, AreaLinf, logNAF, 
+               logNgr, AreaGran, MicroP)
+library(sjPlot)
+library(ggeffects)
+library(sjmisc)
+library(bayesplot)
+
+dx %>% 
+  pivot_longer(1:8,names_to = "group", values_to = "estimate") %>% 
+ # mutate(group=factor(group, levels=c("Grade_4","Grade_3","Grade_2", "AreaLinf", "logNAF",
+                                     # "logNgr","AreaGran","MicroP"))) %>% 
+  ggplot(aes(x=estimate, y=group, fill=group))+
+  geom_halfeyeh(alpha=0.8, .width = c(0.95))+
+  scale_fill_manual(values=c("firebrick4","firebrick4", "firebrick4","firebrick4",
+                             "firebrick4", "firebrick4", "firebrick4", "firebrick4"))+
+  vline_0(color="red",linetype = 2)+labs(title="Coefficients plot", x="Count model estimated coefficients (log-mean)", y="")+
+  theme_ggeffects()+theme(legend.position = 'none')+labs(title="MNC- coefficient plot")
+
+
+
+
+
+p<-plot_model(m2, show.intercept = TRUE, transform = NULL)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 library(brms)
@@ -392,11 +645,13 @@ options(mc.cores=parallel::detectCores())
 
   
 nullmdl <- brm(Grgrade ~ (1|Idlinf), data=dt,
-               family=cumulative("logit"), cores = 4, iter = 4000)
+               family=cumulative("logit"), cores = 4, iter = 5000)
   
   
   
-modM <- brm(Grgrade ~ Micro+(1|Idlinf), data=dt, family=cumulative("logit"), threshold="flexible")
+modM <- brm(Grgrade ~ Micro+log(MNC+1)+(1|Idlinf), data=dt, family=cumulative("logit"), cores = 4, iter = 5000)
+
+
 
 
   
@@ -405,43 +660,41 @@ modM <- brm(Grgrade ~ Micro+(1|Idlinf), data=dt, family=cumulative("logit"), thr
   
   
   
-  
-  
 
-# library(rethinking)
-# simplehist(dt$Grgrade, xlim=c(1,4), xlab="Grado")  
-# 
-# pr_k<-table(dt$Grgrade)/nrow(dt)
-# cum_pr_k<-cumsum(pr_k)
-# plot(1:4, cum_pr_k, type="b",xlab="Grado")
-# 
-# logit<-function(x) log(x/(1-x))
-# lco<-logit(cum_pr_k)
-# 
-# plot(1:4, lco, type="b",xlab="Grado")
-# 
-# 
-# m1.0<-ulam(
-#   alist(
-#     Gr~dordlogit(0, cutpoints),
-#     cutpoints~dnorm(0,1.5)
-#   ), data=list(Gr=dt$Grgrade), chains=4,cores=4)
-# 
-# 
-# dat<-list(Gr=dt$Grgrade,
-#           M=as.integer(as.factor(dt$Micro))-1)
-# 
-# 
-# m1.1<-ulam(
-#   alist(
-#     Gr~dordlogit(phi, cutpoints),
-#     phi<-bM*M,
-#     bM~dnorm(0,0.5),
-#     cutpoints~dnorm(0,1.5)
-#   ), data=dat, chains=4,cores=4)
-# 
-# 
-# 
+#  library(rethinking)
+#  simplehist(dt$Grgrade, xlim=c(1,4), xlab="Grado")  
+# # 
+#  pr_k<-table(dt$Grgrade)/nrow(dt)
+#  cum_pr_k<-cumsum(pr_k)
+#  plot(1:4, cum_pr_k, type="b",xlab="Grado")
+# # 
+#  logit<-function(x) log(x/(1-x))
+#  lco<-logit(cum_pr_k)
+# # 
+#  plot(1:4, lco, type="b",xlab="Grado")
+# # 
+# # 
+# # m1.0<-ulam(
+# #   alist(
+# #     Gr~dordlogit(0, cutpoints),
+# #     cutpoints~dnorm(0,1.5)
+# #   ), data=list(Gr=dt$Grgrade), chains=4,cores=4)
+# # 
+# # 
+# # dat<-list(Gr=dt$Grgrade,
+# #           M=as.integer(as.factor(dt$Micro))-1)
+# # 
+# # 
+# # m1.1<-ulam(
+# #   alist(
+# #     Gr~dordlogit(phi, cutpoints),
+# #     phi<-bM*M,
+# #     bM~dnorm(0,0.5),
+# #     cutpoints~dnorm(0,1.5)
+# #   ), data=dat, chains=4,cores=4)
+# # 
+# # 
+# # 
 # 
 # cutpoints <- m1.1 %>%
 #   recover_types(dat) %>%
