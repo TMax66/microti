@@ -14,7 +14,14 @@ Il secondo livello, nidificato sotto Linfonodo, è rappresentato dalle informazi
 
 ```{r include=FALSE}
 setwd("~/gitProgetti/microti")
-source("~/gitProgetti/basicpkg.R")
+# source("~/gitProgetti/basicpkg.R")
+setwd("~/gitProgetti/microti")
+library(tidyverse)
+library(sjPlot)
+library(brms)
+library(glmmTMB)
+library(readxl)
+
 dt <- read_excel("MICROTI definitive - modified.xlsx")
 dt$IDGr<-1:nrow(dt)
 lnf<- dt %>% 
@@ -404,5 +411,13 @@ p14<-dt%>%
 (p12+p13)/p14+plot_annotation(tag_levels = 'a')
 
 ```
+### MODELS ##
 
+*Appunti*
+
+A zero-inflated model assumes that the zero observations have two different origins: “structural” and “sampling”. Figure 1b shows a zero-inflated Poisson model with the zero observations split due to their structural (dark grey portion of the zero bar; let's call them “structural zeros”) or sampling origin (light grey portion of the zero bar; let's call them “sampling zeros”). The sampling zeros are due to the usual Poisson (or negative binomial) distribution, which assumes that those zero observations happened by chance. Zero-inflated models assume that some zeros are observed due to some specific structure in the data. For example, if a count of high-risk sexual behaviors is the outcome, some participants may score zero because they do not have a sexual partner; these are the structural zeros since they cannot exhibit unprotected sexual behavior. Others participants have sexual partners but score zero because they have eliminated their high-risk behavior. That is, their risk behavior is assumed to be on a Poisson or negative binomial distribution that includes both zero (the “sampling zeros”) and non-zero counts.
+
+In contrast, a hurdle model (see Figure 1c for illustration of a Poisson hurdle) assumes that all zero data are from one “structural” source. The positive (i.e., non-zero) data have “sampling” origin, following either truncated Poisson (Figure 1c) or truncated negative-binomial distribution (7). For example, consider a study of cocaine users in which a secondary outcome is a number of tobacco cigarettes smoked during last month. In this case, it is safe to assume that only non-smokers will smoke zero cigarettes during the last month and smokers will score some positive (non-zero) number of cigarettes during last month. Hence the zero observations can come from only one “structural” source, the non-smokers. If a subject is considered a smoker, they do not have the ‘ability’ to score zero cigarettes smoked during the last month and will always score a positive number of cigarettes in a hurdle model with either truncated Poisson or truncated negative binomial distributions.
+
+The distinction between structural and sampling zeros, and hence between zero-inflated and hurdle models, may seem subtle. However, one or the other models may be more appropriate depending on the nature of the experimental design and the outcome data being observed (2). The different models can yield different results with very different interpretations.
 

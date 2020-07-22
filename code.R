@@ -1,6 +1,8 @@
 #setwd
 setwd("~/gitProgetti/microti")
 source("~/gitProgetti/basicpkg.R")
+library(tidyverse)
+library(readxl)
 dt <- read_excel("MICROTI definitive - modified.xlsx")
 
 dt$IDGr<-1:nrow(dt)
@@ -8,19 +10,20 @@ dt$IDGr<-1:nrow(dt)
 
 library(ggraph)
 library(igraph)
-library(tidyverse)
+
 
 dt %>% 
   mutate(Grgrade=ifelse(Grgrade==1, "G1",
                         ifelse(Grgrade==2, "G2", 
                                ifelse(Grgrade==3, "G3", "G4")))) %>% 
   mutate(Grgrade=factor(Grgrade, levels=c("G1", "G2", "G3","G4"))) %>% 
-  select(Idlinf, Micro,totalArea, Grgrade, MNC) %>% 
-  group_by(Idlinf, Micro,totalArea,Grgrade, MNC) %>% 
-  summarise(ngr=n()) %>% 
-  unique() %>% 
-  summarise(n=sum(ngr)) %>% 
-  pivot_wider( names_from = "Grgrade", values_from = n, values_fill = list(n=0))
+  mutate(D=2*sqrt(totalArea/3.14)) %>% 
+  mutate(d=2*sqrt(Grarea/3.14)) %>% 
+  
+  group_by(Idlinf, Micro, D,d, Grcompl,IDGr, Grgrade, MNC, NAF) %>% 
+  summarise(ngr=n())%>% 
+  pivot_wider( names_from = "Grgrade", values_from = ngr, values_fill = list(ngr=0)) %>% 
+  View()
 
 
 
@@ -606,6 +609,7 @@ library(sjPlot)
 library(ggeffects)
 library(sjmisc)
 library(bayesplot)
+library(tidybayes)
 
 dx %>% 
   pivot_longer(1:8,names_to = "group", values_to = "estimate") %>% 
@@ -620,9 +624,6 @@ dx %>%
 
 
 
-
-
-p<-plot_model(m2, show.intercept = TRUE, transform = NULL)
 
 
 
