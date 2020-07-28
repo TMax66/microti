@@ -1,76 +1,47 @@
 setwd("~/gitProgetti/microti")
-library(tidyverse)
-library(sjPlot)
-library(brms)
-library(glmmTMB)
-library(readxl)
-#library(REEMtree)
-#library(glmertree)
-library(tidybayes)
-library(ggridges)
+source("dataset.R")
 
-#source("~/gitProgetti/basicpkg.R")
-dt <- read_excel("MICROTI definitive - modified.xlsx")
-dt$id<-1:nrow(dt)
 
-ngr<-dt %>% 
-  select( "Idlinf", "totalArea",  "Grarea" , "MNC" , "Grgrade", 
-          "NAF", "Micro" , "Grcompl", "id") %>% 
-  group_by(Idlinf) %>%
-  summarise(ngr=n())
 
-####dataset per model con measurement error#####
-dt %>% 
-  mutate(Grgrade=ifelse(Grgrade==1, "G1",
-                        ifelse(Grgrade==2, "G2", 
-                               ifelse(Grgrade==3, "G3", "G4")))) %>% 
-  mutate(Grgrade=factor(Grgrade, levels=c("G1", "G2", "G3","G4"))) %>% 
-  mutate(D=2*sqrt(totalArea/3.14)) %>% 
-  mutate(d=2*sqrt(Grarea/3.14)) %>% 
+#ORDINAL MODEL####
+
+#prior predictive check
+#family <- brms::cumulative(logit)
+#formula <- grade ~ 1
+
+#get_prior(formula, data = dt2, family = family)
+
+# prior <- brm(formula = formula,
+#              data = dt2,
+#              family = family,
+#              prior = set_prior("normal(0,10)", class = "Intercept"),
+#              sample_prior = "only",
+#              seed = 9121,
+#              cores = 4, iter = 5000)
+# prior_out <- predict(prior, probs = c(0, 1))
+# head(prior_out)
+# 
+
+fullmod <-brm(grade ~ Micro + lngr + naf + mnc + NAFc + MNCc + 
+                diametro + diametroGr + (1|Idlinf), 
+              data=dt2, family=cumulative("logit"), 
+              prior = set_prior("normal(0,10)", class = "Intercept"),
+              cores = 4, iter = 5000)
+
+
+
+fullmod2 <-brm(grade ~   lngr +  mnc +   MNCc + 
+                  diametroGr + (1|Idlinf), 
+              data=dt2, family=cumulative("logit"), 
+              prior = set_prior("normal(0,10)", class = "Intercept"),
+              cores = 4, iter = 5000)
+
+fullmod<-add_criterion(fullmod,c("waic"))
+fullmod2<-add_criterion(fullmod2,c("waic"))
   
-  group_by(Idlinf, Micro, D,d, Grcompl, Grgrade, MNC, NAF) %>% 
-  summarise(ngr=n())%>% 
-  pivot_wider( names_from = "Grgrade", values_from = ngr, values_fill = list(ngr=0)) %>% 
-  group_by(Idlinf) %>% 
-  summarise(mNaf=mean(log(NAF+1)), 
-            sdNaf=sd(log(NAF+1)), 
-            mMNC=mean(log(MNC+1)),
-            sdMNC=sd(log(MNC+1)), 
-            sG1=sum(G1), 
-            sG2=sum(G2),
-            sG3=sum(G3),
-            sG4=sum(G4), 
-            mdg=mean(d),
-            sdg=sd(d)) %>% 
-  View()
+save.image(file="Modelli.RData")
 
 
-lnf<- dt %>% 
-  select(Idlinf, Micro,totalArea)%>% 
-  unique()
-
-
-#########################################
-
-###dataset per Ordinal Logistic Regression######
-dt2<-dt %>% 
-  full_join(ngr, by="Idlinf") %>% 
-  mutate(grade=as.integer(as.numeric(factor(Grgrade)))) %>% 
-  mutate(d=2*sqrt(totalArea/3.14)) %>% 
-  mutate (diametro= scale(d)) %>% 
-  mutate(NAFc=factor(ifelse(NAF==0, 0, 1))) %>% 
-  mutate(MNCc=factor(ifelse(MNC==0, 0, 1))) %>% 
-  mutate(Idlinf=factor(Idlinf)) %>% 
-  mutate(lngr=log(ngr)) %>% 
-  mutate(naf=scale(NAF)) %>% 
-  mutate(mnc=scale(MNC)) %>% 
-  mutate(dg=2*sqrt(Grarea/3.14)) %>% 
-  mutate(diametroGr=scale(dg))  
-  
-  
-
-# mutate(NAFc=factor(ifelse(NAF==0, 2,  1)-1)) %>% 
-# mutate(MNCc=factor(ifelse(MNC==0, 2, 1)-1)) %>% 
 
 ####g1 grafico distribuzione n.granulomi per grado#####
 p<-dt2 %>% 
@@ -169,18 +140,24 @@ fullmod2 <-brm(grade ~ Micro + lngr + naf + mnc  + MNCc +
               data=dt2, family=cumulative("logit"), cores = 4, iter = 5000)
 
 
+
+fullmod <-brm(grade ~ grade + (1|Idlinf), 
+              data=dt2, family=cumulative("logit"), cores = 4, iter = 5000)
+
+
+
 fullmod<-add_criterion(fullmod, "waic")
 fullmod2<-add_criterion(fullmod2, "waic")
 
 
-conditions <- make_conditions(dt2, c("grade", "diametroGr", "NAFc"))
+conditions <- make_conditions(fullmod2, "NAFc")
 
 conditional_effects(fullmod2, conditions = conditions, effects = "diametroGr:NAFc")
 
 
 color_scheme_set("red")
-a<-mcmc_areas_ridges(fullmod)
-b <- mcmc_areas_ridges(fullmod)
+a<-mcmc_plot(fullmod)
+b<- mcmc_areas_ridges(fullmod2)
 
 
 loo_compare(fullmod, fullmod2)
@@ -199,7 +176,7 @@ mod0 <- brm(grade ~ diametroGr + (1|Idlinf),
             data=dt2, family=cumulative("logit"), cores = 4, iter = 5000)
 
 
-mod0.1 <- brm(grade ~ naf + (1|Idlinf), 
+mod0.1 <- brm(grade ~ naf + NAFc + (1|Idlinf), 
             data=dt2, family=cumulative("logit"), cores = 4, iter = 5000)
 
 
