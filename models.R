@@ -1,5 +1,124 @@
-setwd("~/gitProgetti/microti")
+setwd("~/Library/Mobile Documents/com~apple~CloudDocs/gitProject/microti")
 source("dataset.R")
+
+
+#Modello stato microbiologico (Pos/Neg)####
+
+# uso il dataset dtM
+#<- definisco le prior del modello e uso una prior per i coefficenti b winfo
+
+#variabili da inserire nel modello...
+# diametro totale dei linfonodi D ( variabile scalata)
+# sG1,sG2,sG3,sG4 <- proporzione per linfonodo di granulomi dei diversi gradi istologici
+# Naf <- presenza di batteri acido resistenti nel linfonodo 
+# MNC <- presenza di cellule giganti nel linfonodo
+# Lngr <- numero di granulomi per linfonodo (log)
+
+formula <- Micro ~Lngr + D  + sG1 + sG2 + sG3 + sG4
+family <- bernoulli("logit")
+dati <- dtM
+
+myprior = c(set_prior("normal(0,10)", class = "Intercept"), 
+            set_prior("normal(0,1)", class = "b"))
+
+# PRIOR PREDICTIVE CHECK full model####
+
+mprior <- brm(Micro ~ 1 + sG4 + sG3 + sG2 + sG1 + Ds + Lngr + Naf + MNC,
+             family = bernoulli("logit"), 
+             prior = myprior,
+             data = dtM, iter = 4000, cores = 4, 
+             sample_prior = "only",
+             seed = 1999,
+             control = list(adapt_delta = 0.90,
+                            max_treedepth = 20
+             ))
+
+pp_check(mprior, nsamples = 100)
+
+
+#generare fake data ......
+newY=predict(fullmod, newdata = dtM, summary=FALSE, nsamples=1)[1,]
+dtM$Yfake <- newY
+#fit model with fake data
+fakeMod <- brm(Yfake ~ sG4 + sG3 + sG2 + sG1  + Lngr + Naf + MNC + Ds,
+             family = bernoulli("logit"), 
+             prior = myprior,
+             data = dtM, iter = 4000, cores = 4, 
+             control = list(adapt_delta = 0.90,
+                            max_treedepth = 20
+             ))
+
+#check predictive 
+
+pp_check(fakeMod, type = "error_hist")
+
+####MODEL#####
+mod1 <- brm(Micro ~ sG1 + sG2 + sG1 + sG3 + sG4 +Naf + MNC,
+             family = bernoulli("logit"), 
+             prior = myprior,
+             data = dtM, iter = 4000, cores = 4, 
+             control = list(adapt_delta = 0.90,
+                            max_treedepth = 20
+             ))
+mod2 <- update(mod1, . ~ . - sG1)
+mod3 <- update(mod2, . ~ . - sG2)
+mod4 <- update(mod3, . ~ . - sG3)
+
+
+
+loo(mod1,mod2,mod3,mod4,mod5)
+
+result <- estimate_density(mod1)
+
+plot(result, priors = TRUE)
+
+result <- p_direction(mod1)
+plot(result, priors = TRUE)
+
+result <- p_significance(mod1)
+
+
+
+
+
+
+
+
+
+
+GGally::ggcorr(dt.me[,c(4, 13:17, 20)], geom="text")
+
+modG4 <- brm(Micro ~ sG4 + sG3 + sG2 + MNC + Naf + D,
+            family = bernoulli("logit"), 
+            data = dt.me, iter = 2000, cores = 4,
+            control = list(adapt_delta = 0.80,
+                           max_treedepth = 15
+                           ))
+
+modG1 <- brm(Micro ~ sG1 + sG3 + sG2 + MNC + Naf + D + me(mdg, sdg),
+             family = bernoulli("logit"), 
+             data = dt.me, iter = 2000, cores = 4,
+             control = list(adapt_delta = 0.80,
+                            max_treedepth = 20
+             ))
+
+
+library(rstanarm)
+
+x <- model.matrix(Micro ~ . - 1, data = dt.me)
+t_prior <- student_t(df = 7, location = 0, scale = 2.5)
+post1 <- stan_glm(Micro ~  sG1 + sG3 + sG2 + sG4 + MNC + Naf + D,
+                  data = dt.me,
+                  family = binomial(link = "logit"), 
+                  prior = t_prior, prior_intercept = t_prior, QR=TRUE,
+                  seed = 1000)
+pplot<-plot(post1, "areas", prob = 0.95, prob_outer = 1)
+pplot+ geom_vline(xintercept = 0)
+
+bayesplot::mcmc_pairs(as.matrix(modG1))
+
+
+GGally::ggcorr(dt.me[,c(4, 13:17, 20)], geom="text")
 
 
 
@@ -26,8 +145,7 @@ fullmod <-brm(grade ~ Micro + lngr + naf + mnc + NAFc + MNCc +
                 diametro + diametroGr + (1|Idlinf), 
               data=dt2, family=cumulative("logit"), 
               prior = set_prior("normal(0,10)", class = "Intercept"),
-              cores = 4, iter = 5000)
-
+              cores = 4, iter = 2000, chains = 2)
 
 
 fullmod2 <-brm(grade ~   lngr +  mnc +   MNCc + 
