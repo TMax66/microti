@@ -14,12 +14,15 @@ source("dataset.R")
 # MNC <- presenza di cellule giganti nel linfonodo
 # Lngr <- numero di granulomi per linfonodo (log)
 
-formula <- Micro ~Lngr + D  + sG1 + sG2 + sG3 + sG4
+formula <- Micro ~  sG1 + sG2 + sG3 + sG4 + Naf + MNC
 family <- bernoulli("logit")
 dati <- dtM
 
 myprior = c(set_prior("normal(0,10)", class = "Intercept"), 
             set_prior("normal(0,1)", class = "b"))
+
+
+GGally::ggcorr(dtM[,c(7:10, 12)], geom="text")
 
 # PRIOR PREDICTIVE CHECK full model####
 
@@ -53,29 +56,40 @@ fakeMod <- brm(Yfake ~ sG4 + sG3 + sG2 + sG1  + Lngr + Naf + MNC + Ds,
 pp_check(fakeMod, type = "error_hist")
 
 ####MODEL#####
-mod1 <- brm(Micro ~ sG1 + sG2 + sG1 + sG3 + sG4 +Naf + MNC,
+mod1 <- brm(formula = formula,
              family = bernoulli("logit"), 
              prior = myprior,
              data = dtM, iter = 4000, cores = 4, 
              control = list(adapt_delta = 0.90,
                             max_treedepth = 20
              ))
-mod2 <- update(mod1, . ~ . - sG1)
-mod3 <- update(mod2, . ~ . - sG2)
-mod4 <- update(mod3, . ~ . - sG3)
+mod2 <- update(mod1, . ~ . - Ds, newdata = dtM)
+mod3 <- update(mod2, . ~ . - Lngr,newdata = dtM)
+
+
+# color_scheme_set("red")
+# ppc_dens_overlay(y = dtM$Micro,
+#                  yrep = posterior_predict(mod3, draws = 50))
+# 
+# 
+# loo(mod1,mod2,mod3,mod4,mod5)
+# 
+# result <- estimate_density(mod1)
+# 
+# plot(result, priors = TRUE)
+# 
+# result <- p_direction(mod1)
+# plot(result, priors = TRUE)
+# 
+# result <- p_significance(mod1)
+
+ceff <- conditional_effects(mod3)
 
 
 
-loo(mod1,mod2,mod3,mod4,mod5)
-
-result <- estimate_density(mod1)
-
-plot(result, priors = TRUE)
-
-result <- p_direction(mod1)
-plot(result, priors = TRUE)
-
-result <- p_significance(mod1)
+dtceff %>% 
+  ggplot(aes(x=ceff$, y=Micro))+geom_line()+
+  
 
 
 
@@ -84,80 +98,95 @@ result <- p_significance(mod1)
 
 
 
-
-
-GGally::ggcorr(dt.me[,c(4, 13:17, 20)], geom="text")
-
-modG4 <- brm(Micro ~ sG4 + sG3 + sG2 + MNC + Naf + D,
-            family = bernoulli("logit"), 
-            data = dt.me, iter = 2000, cores = 4,
-            control = list(adapt_delta = 0.80,
-                           max_treedepth = 15
-                           ))
-
-modG1 <- brm(Micro ~ sG1 + sG3 + sG2 + MNC + Naf + D + me(mdg, sdg),
-             family = bernoulli("logit"), 
-             data = dt.me, iter = 2000, cores = 4,
-             control = list(adapt_delta = 0.80,
-                            max_treedepth = 20
-             ))
-
-
-library(rstanarm)
-
-x <- model.matrix(Micro ~ . - 1, data = dt.me)
-t_prior <- student_t(df = 7, location = 0, scale = 2.5)
-post1 <- stan_glm(Micro ~  sG1 + sG3 + sG2 + sG4 + MNC + Naf + D,
-                  data = dt.me,
-                  family = binomial(link = "logit"), 
-                  prior = t_prior, prior_intercept = t_prior, QR=TRUE,
-                  seed = 1000)
-pplot<-plot(post1, "areas", prob = 0.95, prob_outer = 1)
-pplot+ geom_vline(xintercept = 0)
-
-bayesplot::mcmc_pairs(as.matrix(modG1))
-
-
-GGally::ggcorr(dt.me[,c(4, 13:17, 20)], geom="text")
 
 
 
 #ORDINAL MODEL####
-
+#dataset <-dt2
 #prior predictive check
-#family <- brms::cumulative(logit)
-#formula <- grade ~ 1
+#outcome: grade
+#predittori : diametro, Micro, ngr, NAFc, MNCc, naf, mnc, diametroGr
 
-#get_prior(formula, data = dt2, family = family)
+# formula <- grade ~ (1|Idlinf) + Micro + Grcompl + lngr + lnaf + lmnc + lGrArea
+# formula2 <- grade ~ (1|Idlinf) + MNCc  + mnc + cs(diametroGr)+ ngr
 
-# prior <- brm(formula = formula,
-#              data = dt2,
-#              family = family,
-#              prior = set_prior("normal(0,10)", class = "Intercept"),
-#              sample_prior = "only",
-#              seed = 9121,
-#              cores = 4, iter = 5000)
-# prior_out <- predict(prior, probs = c(0, 1))
-# head(prior_out)
+
+# fullmod <-brm(formula, 
+#               data=dt2, family=sratio(), 
+#               prior = myprior,
+#               cores = 4, iter = 2000, chains = 4,
+#               sample_prior = "only")
 # 
+# newY=predict(fullmod, newdata = dt2, summary=FALSE, nsamples=1)[1,]
+# dt2$Yfake <- newY
+# #fit model with fake data
+# fakeMod <- brm(Yfake ~ (1 | Idlinf) + Micro + diametro + ngr + NAFc + MNCc + 
+#                  naf + mnc + diametroGr,
+#                data=dt2, family=sratio(), 
+#                prior = myprior,
+#                cores = 4, iter = 2000, chains = 4,
+#                )
+# 
+# pp_check(fakeMod, nsamples = 100)
+# 
+# 
+# 
+# dt2 %>% 
+#   ggplot(aes(x = grade, y = lGrArea))+
+#   geom_jitter()
+# 
+# dt2 %>% 
+#   ggplot(aes(x = lngr, y = lGrArea))+
+#   geom_jitter()+geom_smooth()
 
-fullmod <-brm(grade ~ Micro + lngr + naf + mnc + NAFc + MNCc + 
-                diametro + diametroGr + (1|Idlinf), 
-              data=dt2, family=cumulative("logit"), 
-              prior = set_prior("normal(0,10)", class = "Intercept"),
-              cores = 4, iter = 2000, chains = 2)
+#Model
+
+formula <- grade ~ (1|Idlinf) 
+family <- sratio("logit")
+dati <- dt2
+
+myprior = c(set_prior("normal(0,5)", class = "Intercept"), 
+            set_prior("normal(0,5)", class = "b"))
+
+mod <-brm(formula, 
+              data=dt2, family=family, 
+              prior = set_prior("normal(0,5)", class = "Intercept"),
+              cores = 4, iter = 4000, chains = 4)
 
 
-fullmod2 <-brm(grade ~   lngr +  mnc +   MNCc + 
-                  diametroGr + (1|Idlinf), 
-              data=dt2, family=cumulative("logit"), 
-              prior = set_prior("normal(0,10)", class = "Intercept"),
-              cores = 4, iter = 5000)
 
-fullmod<-add_criterion(fullmod,c("waic"))
-fullmod2<-add_criterion(fullmod2,c("waic"))
-  
-save.image(file="Modelli.RData")
+
+mod1 <- update(mod, .~. +sArea,newdata = dt2, prior = myprior)
+#mod1a <- update(mod1, .~. , family = cumulative("logit"))
+mod2 <- update(mod1, .~. + Grcompl + snaf + smnc + Micro + sngr, newdata = dt2, cores = 4, iter = 4000, chains = 4)
+
+
+
+GGally::ggcorr(dt2[,c(19:22)], geom="text")
+
+
+kfold3 <-kfold(mod3, K=10)
+kfold4 <- kfold(mod4, K=10)
+
+save(mod2, file = "ordinalM.RData")
+
+plot(p_direction(mod2, parameters = c("MicroP", "sngr",  "GrcomplI", "snaf", "smnc",  "sArea")))
+
+plot(p_direction(mod2, effects = "random"))
+
+
+conditional_effects(mod2, categorical = TRUE, effects = "sArea")
+
+
+pdr <- p_direction(mod4, effects = "random")
+
+pdr %>% 
+  mutate(pv = pd_to_p(pd)) %>% 
+  filter(pv <= 0.1)
+
+plot(pd[4:8,])
+
+
 
 
 
