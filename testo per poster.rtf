@@ -1,0 +1,22 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww13500\viewh11900\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Methods\
+The microbiological status of the lymph nodes (Micro: Positive / Negative) was modeled using a Bayesian logistic regression model as described by Mc Elreath  using brms package in R (CRAN)  using the following predictors: \
+Lymph node size, \
+Presence in lymph node granulomas of acid fast bacteria.\
+Presence of MNC  in granulomas.\
+Total number of granulomes in lymph\
+Proportion of  granulomas  grade 1, 2, 3 and 4  in each lymph\
+Weakly informative Prior of model parameters (intercept and regression coefficients) were selected to regularize estimation \
+Final models was select by model comparison methods using  cross-validation technics. Relative importance of variable in the model were tested with probability direction as described by \'85. Using  bayestestR package. \
+\
+The effect of size of granulomas, number of NAF , number  of MNC,  granulomas completeness, number of granulomas and microbiological status on  granuloma maturity grade (from 1 to 4) were studied  fitting a Bayesian multilevel ordinal logistic regression assuming a sequential order of outcome  according to burken et al  using brms package with  lymph as cluster variable to take account of hierarchical dataset with granuloma observation nested in lymphs. Weakly informative Prior of model parameters (intercept and regression coefficients) were selected to regularize estimation \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 Final models was select by model comparison methods using  cross-validation technics. Relative importance of variable in the model were tested with probability direction as described by \'85. Using  bayestestR package. \
+\
+}
