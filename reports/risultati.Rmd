@@ -7,6 +7,21 @@ output:
 ---
 ```{r include=FALSE}
 source("dataset.R")
+
+library(tidyverse)
+library(sjPlot)
+library(brms)
+library(glmmTMB)
+library(readxl)
+library(tidybayes)
+library(ggridges)
+library(see)
+library(bayestestR)
+library(bayesplot)
+library(hrbrthemes)
+library(knitr)
+
+
 ```
 
 
@@ -51,7 +66,10 @@ Il modello ha selezionato come predittori la proporzione dei granulomi dei diver
 I risultati del modello sono riportati nel seguente grafico. Per ogni predittore viene riportata la distribuzione della stima del coefficiente di regressione e viene indicata con diversi colori l'area corrispondente ai valori con effetto negativo e a quelli con effetto positivo. Considerando che l'area complessiva della distribuzione dei valori delle stime dei coefficienti è uguale a 1 (100%), è possibile calcolare l'area corrispondente ai valori positivi e negativi. In questo modo si ottiene una misura dell' importanza dell'effetto stimato dal modello chiamata P_direction (PD). 
 ```{r echo=FALSE}
 load("mod3.RData")
-plot(p_direction(mod3))
+plot(p_direction(mod3))+
+  labs(title = "Bayesian Logistic Regression estimation of lymph nodes Microbiological Status ", 
+        x = "Bayesian posterior distribution of estimate", y= "Predictors") +
+  theme_ipsum_rc(plot_title_size = 10)  +scale_fill_brewer(palette="Blues")
 ```
 
 Di seguito in tabella sono riassunti per tutti i predittori i coefficenti stimati, l'errore standard associato e il valore di PD 
@@ -63,7 +81,9 @@ fixef(mod3) %>%
   cbind("PD%"=p$pd*100) %>% 
   round(2) %>% 
   data.frame() %>% 
-  select(-c(3,4))
+  select(-c(3,4)) %>% 
+  kable("html") %>% 
+  kableExtra::kable_styling()
 
 ```
 In sostanza all'aumentare della proporzione di granulomi di grado 1 per linfonodo 
@@ -93,7 +113,11 @@ I risultati del modello sono riportati nel seguente grafico.
 
 ```{r echo=FALSE}
 load("ordinalM.RData")
-plot(p_direction(mod2, parameters = c("MicroP", "sngr",  "GrcomplI", "snaf", "smnc",  "sArea")))
+plot(p_direction(mod2, parameters = c("MicroP", "sngr",  "GrcomplI", "snaf", "smnc",  "sArea")))+
+labs(title = "Bayesian Ordinal Regression Model estimation of Granuloma Maturity Grade ", 
+        x = "Bayesian posterior distribution of estimate", y= "Predictors") +
+  theme_ipsum_rc(plot_title_size = 10) + scale_fill_brewer(palette="Blues")
+```
 
 ```
 
@@ -105,7 +129,10 @@ fixef(mod2) %>%
   cbind("PD%"=p$pd*100) %>% 
   round(2) %>% 
   data.frame() %>% 
-  select(-c(3,4))
+  select(-c(3,4)) %>% 
+  kable("html") %>% 
+  kableExtra::kable_styling()
+
 
 ```
 
@@ -118,10 +145,103 @@ In questo tipo di modelli risulta più efficace visualizzare,  almeno per i pred
 I grafici che seguono mostrano gli effetti dei predittori: dimensione, numero di granulomi, completezza, numero di mnc.
 
 ```{r echo=FALSE}
-conditional_effects(mod2, categorical = TRUE, effects = "sArea")
-conditional_effects(mod2, categorical = TRUE, effects = "sngr")
-conditional_effects(mod2, categorical = TRUE, effects = "smnc")
-conditional_effects(mod2, categorical = TRUE, effects = "Grcompl")
+p <- conditional_effects(mod2, categorical = TRUE, effects = "sArea")
+p[["sArea:cats__"]]$effect2__ <- recode(p[["sArea:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p <- as_tibble(p[[1]])
+scale <- attr(dt2$sArea, "scaled:scale")
+center <- attr(dt2$sArea,"scaled:center")
+
+p <- p %>%
+  mutate(sArea = sArea* scale + center)
+
+ 
+ ggplot(p, aes(x = sArea, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of Granouloma area") + 
+   facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of granuloma area  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 12) + theme(legend.position = "none")
+
+
+
+
+p2 <- conditional_effects(mod2, categorical = TRUE, effects = "sngr")
+
+p2[["sngr:cats__"]]$effect2__ <- recode(p2[["sngr:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p2 <- as_tibble(p2[[1]])
+scale <- attr(dt2$sngr, "scaled:scale")
+center <- attr(dt2$sngr,"scaled:center")
+
+p2 <- p2 %>%
+  mutate(sngr = sngr*scale + center)
+
+ggplot(p2, aes(x = sngr, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of number of granuloma per lymph node") + 
+   facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of number of granuloma per lymph node  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 12) + theme(legend.position = "none")
+
+
+
+
+
+
+p3 <- conditional_effects(mod2, categorical = TRUE, effects = "smnc")
+
+p3[["smnc:cats__"]]$effect2__ <- recode(p3[["smnc:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p3 <- as_tibble(p3[[1]])
+
+scale <- attr(dt2$smnc, "scaled:scale")
+center <- attr(dt2$smnc,"scaled:center")
+
+p3 <- p3 %>%
+  mutate(smnc = smnc*scale + center)
+
+ggplot(p3, aes(x = smnc, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of number of MNC per granuloma") + 
+   facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of number of MNC per granuloma  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 12) + theme(legend.position = "none")
+
+
+
+
+
+
+
+
+
+
+
 ```
 Per l'interpretazione dei grafici che si riferiscono alle variabili su scala continua, dovete considerare che per necessità di costruzione del modello , tutte le variabili vengono standardizzate e quindi i valori sono scalati rispetto alla media e alla deviazione standard. Quindi il valore zero corrisponde alla media e i valori + o - sono le deviazioni standard dalla media... Ma al di là di questa complicazione è sufficiente osservare la direzione del grafico verso destra aumenta il valore della variabile verso sinistra diminuisce... se prendete il primo grafico quello che riporta l'effetto della dimensione dei granulomi vedete 4 curve ognuna fa riferimento a un grado istologico come riportato nella legenda a fianco. Il modello ragiona in questi termini, assegna al singolo granuloma sulla base dei valori dell'area e tenendo costante tutte le altre variabili 4 valori di probabilità  per grado istologico. Quindi se provate a tirare idealmente una linea corrispoendente a -1 cioè area di dimensioni inferiori di una deviazione standard dalla media dei granulomi vedete che il modello assegna 0 probabilità ai gradi 3 e 4, una bassa probabilità al grado due e infine una probabilità elevata al grado 1. Se fate la stessa cosa con il valore di area uguale a +2 deviazioni standard noterete che il modello attribuisce una probabilità pari a 0 e poco più per i gradi 1 e 2 mentre attribuisce una probabilitò del 50% sia al grado 3 che al grado 4. La stessa modalità di lettura si applica anche alle altre variabili. L'area risulta un predittore molto efficace infatti questo grafico mostra una netta separazione tra i diversi gradi istologici. 
 

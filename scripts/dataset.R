@@ -87,3 +87,22 @@ dt2<-dt %>%
 
 
 
+
+######################
+
+P <- p_direction(mod3)
+
+Pd <-  plot(P)
+
+Pd[["data"]]$y <- recode(Pd[["data"]]$y, b_MNCSi = "MNC", b_NAFSi = "NAF")
+
+
+plot(P)+scale_fill_brewer(palette="Blues")
+  
+
+p[["sArea:cats__"]]$effect2__ <- recode(p[["sArea:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+
