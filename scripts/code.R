@@ -1,9 +1,10 @@
 #setwd
-setwd("~/gitProgetti/microti")
-source("~/gitProgetti/basicpkg.R")
+# setwd("~/gitProgetti/microti")
+# source("~/gitProgetti/basicpkg.R")
 library(tidyverse)
 library(readxl)
-dt <- read_excel("MICROTI definitive - modified.xlsx")
+library(here)
+dt <- read_excel(here("data/raw", "MICROTI definitive - modified.xlsx"))
 
 dt$IDGr<-1:nrow(dt)
 

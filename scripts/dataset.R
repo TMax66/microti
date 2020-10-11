@@ -1,16 +1,20 @@
-setwd("~/Library/Mobile Documents/com~apple~CloudDocs/gitProject/microti")
-library(tidyverse)
-library(sjPlot)
-library(brms)
-library(glmmTMB)
-library(readxl)
-library(tidybayes)
-library(ggridges)
-library(see)
-library(bayestestR)
-library(bayesplot)
+library("tidyverse")
+library("sjPlot")
+library("brms")
+#library(glmmTMB)
+library("readxl")
+library("tidybayes")
+library("ggridges")
+library("see")
+library("bayestestR")
+library("bayesplot")
+library("here")
 
-dt <- read_excel("MICROTI definitive - modified.xlsx")
+#saveRDS( read_excel(here ("data/raw", "MICROTI definitive - modified.xlsx")),
+         #file = here("data", "processed", "dt.RDS"))
+
+dt <- readRDS(here("data", "processed", "dt.RDS"))
+
 dt$id<-1:nrow(dt)
 
 ngr<-dt %>% 

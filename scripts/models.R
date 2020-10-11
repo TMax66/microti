@@ -1,5 +1,6 @@
-setwd("~/Library/Mobile Documents/com~apple~CloudDocs/gitProject/microti")
-source("dataset.R")
+source(here("scripts", "dataset.R"))
+
+
 
 
 #Modello stato microbiologico (Pos/Neg)####
