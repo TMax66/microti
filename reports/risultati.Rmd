@@ -64,6 +64,8 @@ Il modello, per un singolo  predittore , stima ( con certo grado d'incertezza)  
 
 Il modello ha selezionato come predittori la proporzione dei granulomi dei diversi gradi istologici per linfonodo, la presenza di NAF e di MNC. 
 I risultati del modello sono riportati nel seguente grafico. Per ogni predittore viene riportata la distribuzione della stima del coefficiente di regressione e viene indicata con diversi colori l'area corrispondente ai valori con effetto negativo e a quelli con effetto positivo. Considerando che l'area complessiva della distribuzione dei valori delle stime dei coefficienti è uguale a 1 (100%), è possibile calcolare l'area corrispondente ai valori positivi e negativi. In questo modo si ottiene una misura dell' importanza dell'effetto stimato dal modello chiamata P_direction (PD). 
+
+
 ```{r echo=FALSE}
 load("mod3.RData")
 plot(p_direction(mod3))+

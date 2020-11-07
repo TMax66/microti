@@ -1,423 +1,130 @@
 ---
-title: 'microti data: exploratory analysis'
+title: "Microti data analysis"
 output:
-  html_document:
-    df_print: paged
+  word_document: default
+
+bibliography: biblio.bib
+link-citations: yes
+linkcolor: blue
 ---
-
-Il dataset microti è costituito da 3868 osservazioni e 10 variabili.
-E' un dataset a struttura gerarchica: due livelli nidificati di osservazioni.
-Il primo livello è costituito dalle informazioni relative al singolo Linfondo:
-IdLinf (identificativo campione), totalArea ( area totale esaminata del linfonodo), numero di granulomi osservati, esito microbiologico (PCR pos/neg).Complessivamente sono raccolte informazioni da 103 Linfonodi. 
-Il secondo livello, nidificato sotto Linfonodo, è rappresentato dalle informazioni relative ai singoli granulomi esaminati per ogni linfonodo: Area del granuloma, Grado istologico, MNC, NAF e Completezza. Complessivamente sono stati esaminati 3868 granulomi. 
-
-
 ```{r include=FALSE}
-setwd("~/gitProgetti/microti")
-# source("~/gitProgetti/basicpkg.R")
-setwd("~/gitProgetti/microti")
 library(tidyverse)
 library(sjPlot)
 library(brms)
-library(glmmTMB)
 library(readxl)
+library(tidybayes)
+library(ggridges)
+library(see)
+library(bayestestR)
+library(bayesplot)
+library(hrbrthemes)
+library(knitr)
+library(here)
+library(knitr)
+library(kableExtra)
+library(flextable)
 
-dt <- read_excel("MICROTI definitive - modified.xlsx")
-dt$IDGr<-1:nrow(dt)
+
+dt <- readRDS(here("data", "processed", "dt.RDS"))
+
+dt$id<-1:nrow(dt)
+
+ngr<-dt %>% 
+  select( "Idlinf", "totalArea",  "Grarea" , "MNC" , "Grgrade", 
+          "NAF", "Micro" , "Grcompl", "id") %>% 
+  group_by(Idlinf) %>%
+  summarise(ngr=n())
+
+####dataset per model con measurement error#####
+dtw<-dt %>% 
+  mutate(Grgrade=ifelse(Grgrade==1, "G1",
+                        ifelse(Grgrade==2, "G2", 
+                               ifelse(Grgrade==3, "G3", "G4")))) %>% 
+  mutate(Grgrade=factor(Grgrade, levels=c("G1", "G2", "G3","G4"))) %>% 
+  mutate(d=2*sqrt(Grarea/3.14)) %>% 
+  group_by(Idlinf, Micro,d, Grcompl, Grgrade, MNC, NAF) %>% 
+  summarise(ngr=n())%>% 
+  pivot_wider( names_from = "Grgrade", values_from = ngr, values_fill = list(ngr=0)) %>% 
+  group_by(Idlinf) %>% 
+  summarise( mNaf=mean(log(NAF+1)), 
+             mMNC=mean(log(MNC+1)),
+            sG1=sum(G1), 
+            sG2=sum(G2),
+            sG3=sum(G3),
+            sG4=sum(G4), 
+            Sdg=sum(d)
+            )  
 lnf<- dt %>% 
-    select(Idlinf, Micro,totalArea) %>% 
-  group_by(Idlinf, Micro,totalArea) %>% 
-  mutate(ngr=n()) %>% 
-  unique()
-```
-### Linfonodi
+  select(Idlinf, Micro,totalArea)%>% 
+  mutate(D=2*sqrt(totalArea/3.14)) %>% 
+  unique() 
 
-Il 18% dei linfonodi (19) sono risultati positivi all'esame microbiologico.
-La distribuzione dell'area del linfonodo è  asimmetrica con una coda verso destra che rappresenta pochi linfonodi caraterizzati da un'area totale molto ampia (fig.1)
-
-```{r echo=FALSE}
-p1<-lnf %>% 
-  ggplot()+
-  geom_density(aes(x=totalArea), adjust=2)+
-  geom_rug(aes(x = totalArea, y = 0), position = position_jitter(height = 0))+
-  theme_light()
-p2<-lnf %>% 
-  ggplot()+
-  geom_density(aes(x=totalArea,colour = Micro), adjust=2)+
-  geom_rug(aes(x = totalArea, y = 0), position = position_jitter(height = 0))+
-  theme_light()
-library(patchwork)
-
-(p1+p2)+plot_annotation(tag_levels = 'a')
+dtM <- lnf %>% 
+   left_join(dtw, by="Idlinf") %>% 
+   left_join(ngr, by="Idlinf") %>% 
+   mutate("Ds" = scale(D),
+          Lngr = log(ngr), 
+          sG1 =  sG1/ngr,
+          sG2 =  sG2/ngr,
+          sG3 =  sG3/ngr,
+          sG4 =  sG4/ngr,
+          Naf = ifelse(mNaf == 0, "No", "Si"),
+          MNC = ifelse(mMNC == 0, "No", "Si"), 
+          Micro = ifelse(Micro == "P", 1, 0))
 
 ```
 
-La distribuzione dell'area totale (a)è simile tra i linfonodi Negativi e Positivi all'esame microbiologico; in questi ultimi sembra esserci un maggior numero di linfonodi con area più ampia (parte curva più ampia a destra)(b)
 
-Complessivamente sono presenti nei 103 linfonodi 3686 granulomi. Il numero di granulomi per linfonodo ha una distribuzione fortemente asimmetrica(a): la stragrande maggioranza dei linfonodi esaminati ha pochissimi granulomi e pochi sono i linfonodi con un numero elevato di granulomi. 
-Grosso modo la stessa distribuzione del numero di linfonodi è presente sia in linfonodi microbiologicamente negativi che positivi (b) 
+# Material and methods
 
-<p style="color:blue">Questo dato può essere utile, soprattutto in riferimento al grafico B, perché fa capire che abbiamo esaminato aree linfonodali confrontabili tra linfonodi microbiologicamente positivi e negativi.</p>
-  
+Two outcome variables of interest were identified
 
-```{r echo=FALSE}
-p3 <- lnf %>% 
-  filter(Micro=="P") %>% 
-  ggplot()+
-  geom_density(aes(x=ngr), adjust=0.5)+
-  geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
-  theme_light()
+*  **Micro** microbiological status of the lymph nodes (dichotomous variable Pos / Neg)
+*  **Histo** histological grade of granulomas (ordinal variable with four levels: g1 / g2 / g3 / g4)
 
-p4 <- lnf %>% 
-  ggplot()+
-  geom_density(aes(x=ngr, colour=Micro), adjust=0.5)+
-  geom_rug(aes(x = ngr,y = 0), position = position_jitter(height = 0))+
-  theme_light()
+On the basis of the nature of the outcome variable, we adapted specific regression models with the aim of identifying which variables among those measured significantly influence the outcomes.  In this sense, the variables take on the meaning of predictors, therefore able to predict the outcome value with some degree of error.
 
 
-(p3+p4)+plot_annotation(tag_levels = 'a')
+## Micro 
 
-```
+For this analysis, the statistical unit is the single lymph node and predictors used were:
 
-<p style="color:blue"> 
-Come leggerai nel commento al grafico successivo vorremmo chiederti se fosse possibile (1) scomporre il grafico B, differenziando i vari gradi (mantenendo la divisione dettata dai risultati dell’esame microbiologico).</p>
-  
+* **Size of the lymph node**: Diameter calculated from the area and then standardized in z-score
+* **NAF**: presence of acid fast bacteria in lymph node granulomas. This variable was obtained by calculating for each single lymph node the average number of bacteria present in the various granulomas and then categorizing the lymph node itself as NAF = 1 when the average was greater than 0 and NAF = 0 (i.e. absence of acid-resistant bacteria) in the case of averages equal to 0.
+* **MNC**: similarly to what was done for NAF was done for the categorization of lymph nodes on the basis of the presence or absence of cells in granulomas.
+* **NGR**: total number of granulomas per lymph node used in the model after logarithmic transformation.
+* **sG1, sG2, sG3, sG4**: to grasp the influence that the histological grade of granulomas has on the microbiological state of a lymph node, we constructed four new variables, one for each histological grade, which identify the proportions of granulomas of the different grades for each single lymph node . For each lymph node we calculated the number of granulomas of the different histological grades and then we divided it by the total number of granulomas (**NGR**) per lymph node, thus obtaining a value between 0 and 1 which corresponds to the proportion of granulomas of the different grades. For example, 16 granulomas were observed in lymph node # 8, of which 0 of Grade 1 and 2, 13 of grade 3 and 3 of grade 4, so for lymph nodes 8 we will have this profile sG1 = 0, sG2 = 0, sG3 = 13/16 (0.81), sG4 = 3/16 (0.19).
+By way of example we report in the following table lymph nodes and their profile in relation to the microbiological status to the proportion of granulomas of different histological grades and the total number of granulomas.
 
-```{r echo=FALSE, fig.height=4, fig.width=6, warning=FALSE}
-dt %>% 
-    select(Idlinf, Micro,totalArea, Grgrade) %>% 
-    group_by(Idlinf, Micro,totalArea,Grgrade) %>% 
-    mutate(ngr=n()) %>% 
-    mutate(grade=factor(Grgrade)) %>% 
-    unique() %>% 
-    ggplot()+
-    geom_density(aes(x=log(ngr), colour=grade), adjust=1.8)+
-    geom_rug(aes(x = log(ngr),y = 0), position = position_jitter(height = 0))+
-    theme_light()+facet_grid(~Micro)
-  
-```
-
-<p style="color:red">
-Il grafico si può fare ma non sono sicuro però che abbia senso... perchè lo stesso linfonodo può contribuire con granulomi di diverso grado quindi diventa difficile stabilire se e in che modo il grado istologico (variabili misurata a livello di singolo granuloma -gerarchicamente livello 1) influenza la relazione tra numero di granulomi e status microbiologico (variabili misurate a a livello di singolo linfonodo -gerarchicamente livello 2)
-</p>
-
-
-
-La distribuzione del  numero di granulomi per linfonodo condizionalmente allo stato microbiologico è descritta nel seguente grafico. 
-
-```{r echo=FALSE}
-p5<-lnf %>% 
-  ggplot(aes(x=Micro, y=log(ngr), color=Micro))+
-  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6, width = 0.15)+
-theme_light()
-
-
-p6<-lnf %>% 
-  ggplot(aes(x=Micro, y=log(ngr/totalArea), color=Micro))+
-  geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +
-  theme_light()
-
-(p5+p6)+plot_annotation(tag_levels= 'a')
-```
-
-Si può osservare un ampia variabilità in entrambi le classi  microbiologiche sia usando i dati osservati che dopo normalizzazione con l'area totale del linfonodo. Il grafico suggerisce che mediamente si osservano più granulomi per linfondo nei  casi di positività a microti
-
-
-<p style="color:blue">
-Questi grafici sono molto interessanti perché possono avere significato biologico: se l’infezione è “attiva” il micobatterio è metabolicamente attivo e quindi più predisposto a dare microbiologico positivo ed allo stesso tempo possiamo ipotizzare che ci siano più granulomi, dato che l’ospite sta fallendo nel contenere l’infezione. Per questo vorremo provare a (1) scomporre il numero dei granulomi in base al grado, mantenendo la divisone microbiologico negativo vs positivo.</p>
-
-
-
-
-<p style="color:red">
-In realtà è già stato fatto con la suddivisione del numero di granulomi per grado e stato microbiologico, ve lo ripropongo, ma riflettendoci su vale quanto scritto prima... il grafico si può fare ma non ha senso o almeno non si può usare il grado istologico per predire lo status microbiologico</p>
-
-```{r echo=FALSE, fig.height=4, fig.width=6}
-dt%>% 
-  group_by(Grgrade, Micro) %>% 
-  summarise(n=n()) %>% 
-  arrange(n) %>% 
-  mutate(reg=Grgrade) %>% 
-  ggplot(aes(x=reg, y=n, fill=Micro))+
-  geom_bar(stat="identity", position=position_dodge(), width = 0.9)+
-  labs(x="grado istologico", y="N.granulomi")+
-  theme(axis.text=element_text(size=12))+theme_light()+
-    geom_text(aes(label=n), vjust=1.6, color="white",
-              position = position_dodge(0.9), size=3.5)+
-    scale_fill_brewer(palette="Paired")
-```
-
-
-
-<!-- ```{r echo=FALSE, fig.height=4, fig.width=10} -->
-<!-- #p5 modificato -->
-<!--  p5m<- dt %>%  -->
-<!--   select(Idlinf, Micro,totalArea, Grgrade) %>%  -->
-<!--   group_by(Idlinf, Micro,totalArea,Grgrade) %>%  -->
-<!--   mutate(ngr=n()) %>%  -->
-<!--   unique() %>%  -->
-<!--   ggplot(aes(x=Micro, y=log(ngr), color=Micro))+ -->
-<!--   geom_boxplot(width=0.3)+geom_jitter(alpha=0.6, width = 0.15)+ -->
-<!--   theme_light()+facet_grid(~Grgrade) -->
-
-
-<!-- #p6 modificato -->
-<!-- p6m<-  dt %>%  -->
-<!--     select(Idlinf, Micro,totalArea, Grgrade) %>%  -->
-<!--     group_by(Idlinf, Micro,totalArea,Grgrade) %>%  -->
-<!--     mutate(ngr=n()) %>%  -->
-<!--     unique() %>%  -->
-<!--     ggplot(aes(x=Micro, y=log(ngr/totalArea), color=Micro))+ -->
-<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) + -->
-<!--     theme_light()+facet_grid(~Grgrade) -->
-
-<!-- p5m+p6m -->
-
-<!-- ``` -->
-
-<!-- <p style="color:blue"> -->
-<!-- Sempre ricollegandoci a questi grafici volevamo chiederti se fosse possibile costruirne degli altri nei quali, al posto del numero di granulomi per linfonodo, potesse essere considerato come dato (2A) la somma delle aree dei vari gradi </p>  -->
-
-<!-- ```{r echo=FALSE, fig.height=4, fig.width=10 } -->
-<!-- dt %>%  -->
-<!--     select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>%  -->
-<!--     group_by(Idlinf, Micro,Grgrade) %>%  -->
-<!--     summarise(totAgrGrade=sum(Grarea)) %>%  -->
-<!--     ggplot(aes(x=Micro, y=log(totAgrGrade), color=Micro))+ -->
-<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) + -->
-<!--     theme_light()+facet_grid(~Grgrade)+labs(title="Distribuzione della somma delle aree dei granulomi in base a status microbiologico e grado istologico") -->
-
-<!-- ``` -->
-
-<p style="color:blue">
-Sempre ricollegandoci a questi grafici volevamo chiederti se fosse possibile costruirne degli altri nei quali, al posto del numero di granulomi per linfonodo, potesse essere considerato come dato (2A) la somma delle aree dei vari gradi </p>
-
-
-<!-- ```{r echo=FALSE, fig.height=4, fig.width=10 } -->
-<!--  dt %>%  -->
-<!--     select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>%  -->
-<!--     group_by(Idlinf, Micro,Grgrade) %>%  -->
-<!--     summarise(SumnArea=sum(Grarea)) %>%  -->
-<!--     ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+ -->
-<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +  -->
-<!--     theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi in base a status microbiologico e grado istologico")  -->
-
-<!-- ``` -->
-
-
-<p style="color:blue">
-e (2B) dei singoli gradi (normalizzati per l’area linfonodale analizzata) sempre mantenendo la differenza tra microbiologico positivo vs negativo. </p>
-
-
-<!-- ```{r echo=FALSE, fig.height=4, fig.width=10 } -->
-<!--  dt %>%  -->
-<!--     select(Idlinf, Micro,totalArea, Grgrade, Grarea) %>%  -->
-<!--     group_by(Idlinf, Micro,Grgrade) %>%  -->
-<!--     mutate(nArea=Grarea/totalArea) %>%  -->
-<!--     summarise(SumnArea=sum(nArea)) %>%  -->
-<!--     ggplot(aes(x=as.factor(Grgrade), y=log(SumnArea)))+ -->
-<!--     geom_boxplot(width=0.3)+geom_jitter(alpha=0.6,width = 0.15) +  -->
-<!--     theme_light()+facet_grid(~Micro)+labs(x="grado istologico",caption="Distribuzione della somma delle singole aree dei granulomi  normalizzate per l'area totale del linfonodo in base a status microbiologico e grado istologico")  -->
-<!-- ``` -->
-
-
-
-<p style="color:blue">
-In pratica valutare se a parità di area linfonodale considerata, i linfonodi aventi un’area totale di granulomi in generale (1+2+3+4) o un’area totale dei granulomi di grado X superiore ad una certa soglia sono predittivi per positività microbiologica. 
-</p>
-
-<p style="color:red">
-In realtà, data la natura gerarchica dei dati, non è possibile predire lo stuatus microbiologico (livello 2),  utilizzando come predittori variabili osservate a livello di granulomi ( livello 1), come appunto l'area dei singoli granulomi e il grado istologico. </p>
-
-
-
-
-<p style="color:blue">
-Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei grafici successivi, valutare in questo senso (2C) le aree dei gradi 1+2 vs gradi 3+4, poiché ipotizziamo per esempio che a parità di area linfonodale analizzata, i linfonodi con un’elevata area totale dei gradi 1+2 (indice di mancato contenimento dell’infezione) siano più frequentemente positivi all’esame microbiologico.
-In pratica valutare se a parità di area linfonodale considerata, i linfonodi aventi un’area totale di granulomi in generale (1+2+3+4) o un’area totale dei granulomi di grado X superiore ad una certa soglia sono predittivi per positività microbiologica.
-Pensiamo inoltre che varrebbe la pena, dati i risultati che ci hai mostrato nei grafici successivi, valutare in questo senso (2C) le aree dei gradi 1+2 vs gradi 3+4, poiché ipotizziamo per esempio che a parità di area linfonodale analizzata, i linfonodi con un’elevata area totale dei gradi 1+2 (indice di mancato contenimento dell’infezione) siano più frequentemente positivi all’esame microbiologico.
-</p>
-
-
-<p style="color:red">
-Come già detto su, non è possibile. La distribuzione del grado istologico varia da linfonodo a linfonodo e quindi anche varibili come dimensione dei granulomi nei diversi gradi istologici, o numero di granulomi dei diversi gradi istologici. Una rappresentazione grafica o tabellare  corretta dovrebbe prevedere un grafico /tabella per singolo linfonodo... cioè 103 grafici/tabelle... 
-In questo grafico ho campionato casualmente 20 linfonodi e costruito per ogni linfonodo come si distribuisce il numero di granulomi in base al grado istologico e lo stato microbiologico dei linfonodi. In sostanza la variabilità tra linfonodo, rispetto alle variabili osservate a livello di granuloma è molto elevata quindi non aggregando il dato si perde questa informazione</p>
-
-```{r echo=FALSE}
-linfo<-unique(dt$Idlinf)
-s<-sample(linfo, 20)
-
-dt %>% 
-  filter(Idlinf %in% s) %>% 
-  group_by(Idlinf,Grgrade, Micro) %>% 
-  summarise(ngr=sum(n())) %>% 
-  ggplot(aes(x=as.factor(Grgrade),y=log(ngr), fill=Micro))+
-  geom_bar(stat="identity", position=position_dodge(), width = 0.6) +
-  facet_wrap(~Idlinf)
-```
-
-
-
-
-
-### Granulomi
-La dimensione dei 3686 granulomi risulta molto variabile e fortemente asimmetrica. Il 75% dei granulomi ha un area compresa tra 1133 e 193041, il restante 25% tra 193041 e 165663191. 
-
-<p style="color:blue">
-Volevamo chiederti se (3) fosse possibile eseguire lo stesso calcolo ma differenziando i vari gradi, dicendo per esempio che i granulomi di 4 grado hanno un’area variabile da A a B con dimensione media C. Inoltre, una volta calcolate le dimensioni dei vari gradi, ti chiederemmo se fosse possibile (4) calcolare il diametro medio dei vari gradi, dato che in letteratura viene spesso riportato il diametro e non l’area della lesione.</p>
-
-<p style="color:red">
-Anche in questo caso la variabilità della dimensione dei granulomi in base al grading istologico è differente tra i diversi linfonodi. Quindi non è corretto aggreggare la dimensione dei granulomi solo sulla base del grading ignorando il linfonodo di provenienza.
-Di seguito il grafico di un campione casuale di 20 linfonodi in cui per ogni grado istologico è riportata la distribuzione in quartili (25%-Mediana-75%) della dimensione  </p>
-
-```{r echo=FALSE, fig.height=6, fig.width=10}
-linfo<-unique(dt$Idlinf)
-set.seed(999)
-s<-sample(linfo, 20)
-
-dt %>% 
-  filter(Idlinf %in% s) %>% 
-  group_by(Idlinf,Grgrade, Grarea, Micro) %>% 
-  ggplot(aes(x=as.factor(Grgrade),y=log(Grarea)))+
-  geom_boxplot(width=0.3)+geom_jitter(alpha=0.4, width = 0.15, size=0.8, color="blue", shape=19)+
-  theme_light()+facet_wrap(~Idlinf)
-
-```
-
-<p style="color:red">
-Nel seguente grafico invece è riportata la distribuzione della dimensione dei granulomi di tutti i linfonodi in base al grado istologico.</p>
-
-```{r echo=FALSE}
- dt %>% 
-  group_by(Grgrade, Grarea) %>% 
-  ggplot(aes(x=as.factor(Grgrade),y=log(Grarea)))+
-  geom_boxplot(width=0.3)+geom_jitter(alpha=0.4, width = 0.15, size=0.8, color="blue", shape=19)+facet_wrap(~Micro)+
-  theme_light()
-
-```
-
-
-```{r echo=FALSE, fig.height=15, fig.width=6, warning=FALSE}
-dt %>% 
- # filter(Idlinf %in% s) %>% 
-  group_by(Idlinf,Micro, Grgrade) %>%
-  summarise(area=mean(Grarea)) %>%
-  arrange(area) %>% 
-  mutate(linf=factor(Idlinf, unique(Idlinf))) %>% 
-  ggplot(aes(x=linf,y=log(area), color=factor(Grgrade)))+
-  geom_point(size=2.3)+coord_flip()+theme_light()+facet_wrap(~Micro)
-
-```
-
-
-  
-
-
-
-Nel seguente grafico è riportata la distribuzione del numero di granulomi in base alla classificazione per grado istologico (a); si osserva lo stesso pattern sia tra i granulomi di linfonodi microbiologicamente positivi che negativi (b). 
-I granulomi da linf pos sono prevalentemente di grado 1 e 2, mentre il grado 3 e 4 è più frequente tra i i granulomi dei linfonodi negativi.
-
+\
 
 
 
 ```{r echo=FALSE}
-p7<-dt%>% 
-  group_by(Grgrade) %>% 
-  summarise(n=n()) %>% 
-  arrange(desc(n)) %>% 
-  mutate(reg=factor(Grgrade, unique(Grgrade))) %>% 
-  ggplot(aes(x=reg, y=n))+
-  geom_bar(stat="identity", position=position_dodge(), width = 0.6,fill="steelblue")+
-  labs(x="grado istologico", y="N.granulomi")+
-  theme(axis.text=element_text(size=12))+theme_light()+
-  geom_text(aes(label=n), vjust=1.6, color="white",
-            position = position_dodge(0.9), size=3.5)+
-  scale_fill_brewer(palette="Paired")
+dtM %>% 
+  select (Idlinf, Micro, sG1, sG2, sG3, sG4, NGR = ngr) %>% 
+  slice_head(n = 5) %>% 
+  round(., 2) %>% 
+  flextable()
   
-
-
-p8<-dt%>% 
-  group_by(Grgrade, Micro) %>% 
-  summarise(n=n()) %>% 
-  arrange(n) %>% 
-  mutate(reg=Grgrade) %>% 
-  ggplot(aes(x=reg, y=n, fill=Micro))+
-  geom_bar(stat="identity", position=position_dodge(), width = 0.9)+
-  labs(x="grado istologico", y="N.granulomi")+
-  theme(axis.text=element_text(size=12))+theme_light()+
-    geom_text(aes(label=n), vjust=1.6, color="white",
-              position = position_dodge(0.9), size=3.5)+
-    scale_fill_brewer(palette="Paired")
-  
-
-(p7+p8)+plot_annotation(tag_levels= 'a') 
-
 ```
 
+**Micro** was modeled using a Bayesian General Linear Model(McElreath) . We consider the observed positive microbiological status M as a Bernoulli realizations of a random process with probability p to be positive: 
+
+$$M_i \sim Bernoulli(p)$$
+Then p was modeled using logit link function : 
+
+$$\text{logit(p)} = \alpha + \beta*X $$
+Where X is the predictors design matrix; $\alpha$ is the intercept parameter and $\beta$ is the matrix of predictors regression coefficients.  
+
+For both parameters ($\alpha$ and $\beta$) weakly uninformative priors were selected according to Gelman :
+ $$\alpha \sim Normal(0, 1)$$    
+ $$\beta \sim Normal (0, 1)$$
+The model parameter estimates were obtained by sampling with the HCM algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
+
+Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the Probability Direction (PD), as a measure of the importance of the effects of the parameters, and the Region of Practical Equivalence (ROPE) as an index of significance as reported by [@ makowski2019indices].
 
 
 
-
-
-
-
-Nel figura seguente è riportato la distibuzione complessiva di MNC (a) che risulta marcatamente asimmetrica (la stragrande maggioranza dei granulomi osservati ha meno di 10 MNC); lo stesso pattern si osserva tra i diversi gradi istologici (b), con differenze da indagare e tra granulomi da linfonodi con differente status microbiologico (c)
-
-```{r echo=FALSE,warning=FALSE}
-p9<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= MNC), adjust=2)+
-  geom_rug(aes(x = MNC,y = 0), position = position_jitter(height = 0))+
-  theme_light()+xlim(0,30)
-
-p10<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= MNC, colour=as.factor(Grgrade)), adjust=2)+
-  geom_rug(aes(x =  MNC,y = 0), position = position_jitter(height = 0))+
-  theme_light()+xlim(0,30)
-
-p11<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= MNC, colour=as.factor(Grgrade)), adjust=2)+
-  geom_rug(aes(x = MNC,y = 0), position = position_jitter(height = 0))+
-  theme_light()+facet_grid(~Micro)+xlim(0,30)
-
-
-(p9+p10)/p11+plot_annotation(tag_levels = 'a')
-
-```
-
-Nel figura seguente è riportato la distibuzione complessiva di NAF (a) che risulta marcatamente asimmetrica: è un riscontro molto raro individuare batteri acido-resistenti; lo stesso pattern si osserva tra i diversi gradi istologici (b),  e tra granulomi da linfonodi con differente status microbiologico (c)
-```{r echo=FALSE,warning=FALSE}
-p12<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= NAF), adjust=2)+
-  geom_rug(aes(x = NAF,y = 0), position = position_jitter(height = 0))+
-  theme_light()+xlim(0,5)
-
-p13<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= NAF, colour=as.factor(Grgrade)), adjust=2)+
-  geom_rug(aes(x =  NAF,y = 0), position = position_jitter(height = 0))+
-  theme_light()+xlim(0,5)
-
-p14<-dt%>% 
-  ggplot()+
-  geom_density(aes(x= NAF, colour=as.factor(Grgrade)), adjust=2)+
-  geom_rug(aes(x = NAF,y = 0), position = position_jitter(height = 0))+
-  theme_light()+facet_grid(~Micro)+xlim(0,5)
-
-
-(p12+p13)/p14+plot_annotation(tag_levels = 'a')
-
-```
-### MODELS ##
-
-*Appunti*
-
-A zero-inflated model assumes that the zero observations have two different origins: “structural” and “sampling”. Figure 1b shows a zero-inflated Poisson model with the zero observations split due to their structural (dark grey portion of the zero bar; let's call them “structural zeros”) or sampling origin (light grey portion of the zero bar; let's call them “sampling zeros”). The sampling zeros are due to the usual Poisson (or negative binomial) distribution, which assumes that those zero observations happened by chance. Zero-inflated models assume that some zeros are observed due to some specific structure in the data. For example, if a count of high-risk sexual behaviors is the outcome, some participants may score zero because they do not have a sexual partner; these are the structural zeros since they cannot exhibit unprotected sexual behavior. Others participants have sexual partners but score zero because they have eliminated their high-risk behavior. That is, their risk behavior is assumed to be on a Poisson or negative binomial distribution that includes both zero (the “sampling zeros”) and non-zero counts.
-
-In contrast, a hurdle model (see Figure 1c for illustration of a Poisson hurdle) assumes that all zero data are from one “structural” source. The positive (i.e., non-zero) data have “sampling” origin, following either truncated Poisson (Figure 1c) or truncated negative-binomial distribution (7). For example, consider a study of cocaine users in which a secondary outcome is a number of tobacco cigarettes smoked during last month. In this case, it is safe to assume that only non-smokers will smoke zero cigarettes during the last month and smokers will score some positive (non-zero) number of cigarettes during last month. Hence the zero observations can come from only one “structural” source, the non-smokers. If a subject is considered a smoker, they do not have the ‘ability’ to score zero cigarettes smoked during the last month and will always score a positive number of cigarettes in a hurdle model with either truncated Poisson or truncated negative binomial distributions.
-
-The distinction between structural and sampling zeros, and hence between zero-inflated and hurdle models, may seem subtle. However, one or the other models may be more appropriate depending on the nature of the experimental design and the outcome data being observed (2). The different models can yield different results with very different interpretations.
+# Histo
 
