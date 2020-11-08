@@ -112,19 +112,49 @@ dtM %>%
 **Micro** was modeled using a Bayesian General Linear Model(McElreath) . We consider the observed positive microbiological status M as a Bernoulli realizations of a random process with probability p to be positive: 
 
 $$M_i \sim Bernoulli(p)$$
-Then p was modeled using logit link function : 
+Then p was modeled using **logit link** function : 
 
 $$\text{logit(p)} = \alpha + \beta*X $$
 Where X is the predictors design matrix; $\alpha$ is the intercept parameter and $\beta$ is the matrix of predictors regression coefficients.  
+ The **logit link** maps a parameter that is defined as a probability mass, and therefore constrained to lie between zero and one, onto a linear model that can take on any real value. The logit function itself is defined as the _log-odds_ : 
+ $$logit(p_i) = \text{log} \frac{p_i}{1-p_i}$$
+The "odds" of an event are just the probability it happens divided by the probability it does not happen.
+So we can write: 
+
+$$\text{log} \frac{p_i}{1-p_i} = \alpha + \beta*X$$
+
+da cui si può derivare $p_i$ :
+
+$$p_i=\frac{e^{(\alpha + \beta X)}}{1+e^{(\alpha + \beta X)}}$$
+The above function is usually called **LOGISTIC**. In this context, it is also called the **INVERESE-LOGIT**, because it inverts the logti transform.
+
 
 For both parameters ($\alpha$ and $\beta$) weakly uninformative priors were selected according to Gelman :
  $$\alpha \sim Normal(0, 1)$$    
  $$\beta \sim Normal (0, 1)$$
-The model parameter estimates were obtained by sampling with the HCM algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
+The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
 
-Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the Probability Direction (PD), as a measure of the importance of the effects of the parameters, and the Region of Practical Equivalence (ROPE) as an index of significance as reported by [@ makowski2019indices].
+Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@ makowski2019indices].
+
+**Probability Direction (PD)** can be interpreted as the probability that a parameter (described by its posterior distribution) is strictly positive (whichever is the most probable) and it varies between 50% and 100%. PD is defined as the proportion of the posterior distribution that is of the median's sign (Makowski....2019) 
+
+**Region of Practical Equivalence (ROPE)** is defined as the percentage of the whole posterior distribution that lies within a Region of Practical Equivalence (ROPE) defined as range from -0.1 to 0.1 for linear regression and its equivalent, -0.18 to 0.18 for logistic models (based on the $\pi/\sqrt3$ formula to convert log odds ratios to standardized differences (Cohen....)
 
 
 
 # Histo
+
+In this case, a Bayesian sequential ordinal logistic regression model was adapted according to (Burkner) This type of model assumes that the different classes of the outcome variable (in this case the histological grade) are the expression of a sequential process for which, for example, a granuloma is classified as grade 4, after having "evolved" from the previous grades. The ordinal regression models are of different types, we chose this one because the assumption of the model with respect to the variable outcome is consistent with the histological development of the granulomas. The model is further complicated by the hierarchical structure of the data, whereby observations made at the granuloma level are nested under the lymph nodes.
+
+Then the histological grade (outcome) was modeled using the following variables as predictors of interest:
+
+* lnGrArea: log of the granuloma area
+* lnaf: log of the number of acid fast bacteria per granuloma
+* lmnc: log of the number of MNCs per granuloma
+* micro: microbiological state of the lymph nodes (Pos / Neg)
+* Grcompl: status of complete / incomplete granuloma
+* lngr: number of granulomas per lymph fund
+* IdLinf: background identifier (used as a "random" variable in the model)
+
+
 
