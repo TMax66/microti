@@ -76,6 +76,7 @@ dtM <- lnf %>%
 
 
 # Material and methods
+### Statistics Analysis
 
 Two outcome variables of interest were identified
 
@@ -144,17 +145,33 @@ Bayesian posterior estimates of the parameters  were then summarized in table us
 
 # Histo
 
-In this case, a Bayesian sequential ordinal logistic regression model was adapted according to (Burkner) This type of model assumes that the different classes of the outcome variable (in this case the histological grade) are the expression of a sequential process for which, for example, a granuloma is classified as grade 4, after having "evolved" from the previous grades. The ordinal regression models are of different types, we chose this one because the assumption of the model with respect to the variable outcome is consistent with the histological development of the granulomas. The model is further complicated by the hierarchical structure of the data, whereby observations made at the granuloma level are nested under the lymph nodes.
+For this analysis, the statistical unit is the single granuloma and predictors used were:
 
-Then the histological grade (outcome) was modeled using the following variables as predictors of interest:
+* **lnGrArea**: log of the granuloma area
+* **lnaf**: log of the number of acid fast bacteria per granuloma
+* **lmnc**: log of the number of MNCs per granuloma
+* **micro**: microbiological state of the lymph nodes (Pos / Neg)
+* **Grcompl**: status of complete / incomplete granuloma
+* **lngr**: number of granulomas per lymph fund
+* **IdLinf**: code identifier of lymph (used as a "random" variable in the model)
 
-* lnGrArea: log of the granuloma area
-* lnaf: log of the number of acid fast bacteria per granuloma
-* lmnc: log of the number of MNCs per granuloma
-* micro: microbiological state of the lymph nodes (Pos / Neg)
-* Grcompl: status of complete / incomplete granuloma
-* lngr: number of granulomas per lymph fund
-* IdLinf: background identifier (used as a "random" variable in the model)
+
+In this case, a Bayesian ordinal regression model was fitted according to (Burkner).  The ordinal regression models are of three different types: 
+
+* **Cumulative Model (CM)**
+* **Sequential Model (SM)**
+* **Adjacent Model (AM)**
+
+The **CM** assume that the observed ordinal variable **Y**, the histopatologic grade of granulomas in our case, originates from the categorization of a latent (not observed) continuous variable $\hat{Y}$. To model this categorization process, the **CM** assumes that there are _K_ theresholds $\tau_k$. In our study there are  $K+1 = 4$ response categoriee, and therefore $K=3$ thresholds
+
+For many ordinal variable, the assumption of a single underlying continuos variable may not be appropriate. If the response can be understood as being the result of a sequential process, such that a higher response category is possible only after all lower categories are achieved, the **SM** model as proposed by Tutz (1990) is usually appropriate. In our study this type of model assumes that the different classes of the outcome variable (in this case the histological grade) are the expression of a sequential process for which, for example, a granuloma is classified as grade 4, after having "evolved" from the previous grades.
+
+The **AC** is a widely used ordinal model in item-response theory and is applied in many large scale assessment studies. AC is very different to the CM and SM because it is difficult to think of a natural process leading to it. AC can be chosen for its mathematical convenience rather than any quality of interpretation. 
+We chose SM  because the assumption of the model with respect to the variable outcome is consistent with the histological development of the granulomas. 
+
+The model is further complicated by the hierarchical structure of the data, whereby observations made at the granuloma level are nested under the lymph nodes.
+
+
 
 
 
