@@ -1,3 +1,5 @@
+library("here")
+
 source(here("scripts", "dataset.R"))
 
 
@@ -170,6 +172,12 @@ kfold3 <-kfold(mod3, K=10)
 kfold4 <- kfold(mod4, K=10)
 
 save(mod2, file = "ordinalM.RData")
+
+load(here("data", "processed","ordinalM.RData"))
+
+make_stancode(grade ~ (1 | Idlinf) + sArea + Grcompl + snaf + smnc + Micro + sngr, data = dt2 )
+
+
 
 plot(p_direction(mod2, parameters = c("MicroP", "sngr",  "GrcomplI", "snaf", "smnc",  "sArea")))
 
