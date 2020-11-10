@@ -171,11 +171,29 @@ We choosed **SM**  because the assumption of the model with respect to the varia
 In **SM** the dependend variable Y results from a counting process and is truly ordinal in the sense that in order to achieve a category $k$, one has to first achieve all lower categories 1 to $k-1$. For every category $k \in \{1, ..., K\}$ there is a latent continuos variable $\hat{Y_k}$ determining the transition between the $k + 1 \text{th category}$. We assume that $\hat{Y_k}$ depends on the predictor term $\eta$ and error $\epsilon_k$:
 
 $$ \hat{Y_k} = \eta + \epsilon_k $$
-where $\eta$ is the linear predictor: 
+where $\eta$ is the linear predictor: $\beta X$  where  $\beta$ is the matrix of regression coefficients and $X$ is the matrix of the values of predictors. 
 
-$$ \beta  X  $$  where  $\beta$ is the matrix of regression coefficients and $X$ is the matrix of the values of predictors. 
+So we can formulate the bayesian model as:
 
+$\text{Histo} \sim \text{ordered-logit}(\eta, k) \; \; \; \; \, \, \text{} \text{probability of data}$
 
+$\eta = \alpha_{[Idlinf]}+\beta X \,\,\,\,\, \text{linear model}$
+
+with this priors : 
+
+$$
+\begin{aligned}
+k\sim Normal(0,5) \\
+  \alpha \sim Normal(\hat{\alpha}, \sigma) \\
+  \hat{\alpha} \sim Normal (0,5) \\
+  \sigma \sim Student (3,0,2.5)\\
+  \beta \sim Normal(0,5)
+\end{aligned}
+$$
+The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
+
+Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@ makowski2019indices]. 
+In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects as described by (paul burkner)
 
 
 
