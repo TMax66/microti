@@ -75,9 +75,34 @@ dtM <- lnf %>%
           MNC = ifelse(mMNC == 0, "No", "Si"), 
           Micro = ifelse(Micro == "P", 1, 0))
 
+
+dt2<-dt %>% 
+  full_join(ngr, by="Idlinf") %>% 
+  mutate(grade=as.integer(as.numeric(factor(Grgrade)))) %>% 
+  #mutate(d=2*sqrt(totalArea/3.14)) %>% 
+  #mutate (diametro= scale(d)) %>% 
+  # mutate (LtotArea = log(totalArea)) %>% 
+  mutate(NAFc=factor(ifelse(NAF==0, 0, 1))) %>% 
+  mutate(MNCc=factor(ifelse(MNC==0, 0, 1))) %>% 
+  mutate(Idlinf=factor(Idlinf)) %>% 
+  # mutate(ngr=scale(ngr)) %>% 
+  mutate(lngr = log(ngr),
+         lnaf = log(NAF+1),
+         lmnc = log(MNC+1)) %>% 
+  # mutate(naf=scale(NAF)) %>% 
+  # mutate(mnc=scale(MNC)) %>% 
+  # mutate(dg=2*sqrt(Grarea/3.14)) %>% 
+  # mutate(diametroGr=scale(dg))
+  mutate (lGrArea = log(Grarea),
+          sArea =scale(lGrArea), 
+          snaf = scale(lnaf), 
+          smnc = scale(lmnc), 
+          sngr = scale(lngr))
+
 ####modelli###
 
 load(here("data", "processed", "mod3.RData"))
+load(here("data", "processed",  "ordinalM.RData"))
 
 
 
@@ -93,7 +118,30 @@ Two outcome variables of interest were identified
 *  **Micro** microbiological status of the lymph nodes (dichotomous variable Pos / Neg)
 *  **Histo** histological grade of granulomas (ordinal variable with four levels: g1 / g2 / g3 / g4)
 
-On the basis of the nature of the outcome variable, we adapted specific regression models with the aim of identifying which variables among those measured significantly influence the outcomes.  In this sense, the variables take on the meaning of predictors, therefore able to predict the outcome value with some degree of error.
+On the basis of the nature of the outcome variable, we adapted specific Bayesian regression models with the aim of identifying which variables among those measured significantly influence the outcomes.  In this sense, the variables take on the meaning of predictors, therefore able to predict the outcome value with some degree of error.
+
+Bayesian statistics focuses on the posterior distribution $p(θ|Y)$ where θ are the model parameters (unknown quantities) and Y are the data (known quantities) to condition on. The posterior distribution is generally computed as 
+
+$$ p(\theta|Y) = \frac{p(Y|\theta)p(\theta)}{p(Y)}$$
+
+
+In the above equation $p(Y|θ)$ is the likelihood, $p(θ)$ is the prior distribution and $p(Y)$ is
+the marginal likelihood. The likelihood $p(Y|θ)$ is the distribution of the data given the
+parameters and thus relates the the data to the parameters. The prior distribution $p(θ)$
+describes the uncertainty in the parameters before having seen the data. It thus allows to
+explicitely incorporate prior knowledge into the model. The marginal likelihood $p(Y)$ serves
+as a normalizing constant so that the posterior is an actual probability distribution. 
+In classical frequentist statistics, parameter estimates are obtained by finding those parameter
+values that maximise the likelihood. In contrast, Bayesian statistics estimate the full (joint)
+posterior distribution of the parameters. This is not only fully consistent with probability
+theory, but also much more informative than a single point estimate (and an approximate
+measure of uncertainty commonly known as ’standard error’). Obtaining the posterior
+distribution analytically is rarely possible and thus Bayesian statistics relies on Markov-Chain
+Monte-Carlo (MCMC) methods to obtain samples (i.e., random values) from the posterior
+distribution. Such sampling algorithms are computationally very intensive and thus fitting
+models using Bayesian statistics is usually much slower than in frequentist statistics. However.
+advantages of Bayesian statistics—such as greater modeling flexibility, prior distributions,
+and more informative results—are often worth the increased computational cost.(burker, mcElreath, Gelman)
 
 
 ## Micro 
@@ -208,8 +256,6 @@ Bayesian posterior estimates of the parameters  were then summarized in table us
 In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects of relevant predictors, as described by (paul burkner). 
 
 
-
-
 RESULTS
 
 
@@ -219,8 +265,9 @@ The model results: median of posterior estimated coefficients, 95 intervals of c
 
 ```{r echo=FALSE}
 t1 <- model_parameters(mod3, effects= "fixed", ci = 0.95)
-num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage", "Rhat", "ESS")
-ft <-  flextable(t1)
+num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage")
+#levels(as.factor(t1$Parameter)) <- c("Intercept", "presence of MNC", "presence of NAF", "G1","G2","G3","G4")
+ft <-  flextable(t1[,-c(7:8)])
 ft <- colformat_num(x = ft, j = num_keys, big.mark = ",", digits = 2, na_str = "missing")
 ft <- autofit(ft)
 ft
@@ -230,18 +277,134 @@ Fig.1 report the posterior diastributions of estimated coefficents For each pred
 
 
 ```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE, paged.print=FALSE}
-
-
 p1<-p_direction(mod3)
 x <- plot(p1) 
 levels(x[["data"]][["y"]]) <- c("presence of MNC", "presence of NAF", "G1", "G2", "G3", "G4", "Intercept")
-plot(x)+
- labs(title = "",  x = "Bayesian posterior distribution of estimate", y= "Predictors") +
+ x+ labs(title = "", x = "Bayesian posterior distribution of estimate", y= "Predictors") +
   theme_ipsum_rc(plot_title_size = 10)  +scale_fill_brewer(palette="Blues")
 ```
 
-
+Basically as the proportion of grade 1 granulomas per lymph node increases
+there is a 90% probability that the probability that the lymph is microbiologically positive increases (keeping the value of all other variables constant). There is a similar effect for the variable G2 even if with a probability of 74%. As the proportion of grade 3 and 4 granulomas increases, there is a tendency to decrease the probability that the lymph node is microbiologically positive with a probability of 91% and 72% respectively. In lymph nodes in which granulomas with acid fast bacteria are present there is a greater probability that they are microbiologically positive in 81% of cases. On the contrary, in 70% of cases the presence of MNC in granulomas reduces the likelihood of the lymph nodes to be microbiologically positive.
+However, the relevance of the predictors in terms of distance from 0 is not particularly high, and the uncertainty of the estimates also appears to be rather large. Probably the aggregation of information used to analyze data at the lymph node level is not particularly effective in capturing the underlying effects. 
 
 **Histo**
+The model results: median of posterior estimated coefficients, 95 intervals of credibility, Probability Direction, and % in Rope are shown in the table 2. 
+
+```{r echo=FALSE}
+t2 <- model_parameters(mod2, effects= "fixed", ci = 0.95)
+num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage")
+ft <-  flextable(t2[,-c(7:8)])
+ft <- colformat_num(x = ft, j = num_keys, big.mark = ",", digits = 2, na_str = "missing")
+ft <- autofit(ft)
+ft
+```
+Fig.2 report the posterior distributions of estimated coefficents For each predictor, the distribution of the estimate of the regression coefficient is reported and the area corresponding to the values with negative effect and those with positive effect is indicated with different colors. Considering that the total area of the distribution of the values of the coefficients estimates is equal to 1 (100%), it is possible to calculate the area corresponding to the positive and negative values. In this way we obtain a measure of the importance of the effect estimated by the model called P_direction (PD). 
+
+```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE, paged.print=FALSE}
+p2<-p_direction(mod2)
+y <- plot(p2) 
+levels(y[["data"]][["y"]]) <- c("StdzNgr", "Micro_P", "StdzlnMNC", "StdzlnNAF", "GrCompl_I", "StadzArea", "Intercept_3", "Intercept_2", "Intercept_1")
+ y+ labs(title = "", x = "Bayesian posterior distribution of estimate", y= "Predictors") +
+  theme_ipsum_rc(plot_title_size = 10)  +scale_fill_brewer(palette="Blues")
+```
+
+The model suggests that as granuloma size increases significantly (the regression coefficient is very far from 0!) the probability that the granuloma is classified in the higher grades of the histological scale.
+On the contrary, the increase in the number of granulomas in the lymph nodes reduces the probability that the granulomas of that lymph node are of high histological grade. The microbiological state does not seem to be relevant, while according to the model, the probability of granulomas being classified in high degrees decreases as the number of MNCs increases. As for the number of acid-fast bacteria, the model suggests that there is a positive effect, i.e. as the number of bacteria increases, the probability that the granuloma is of high histological grade increases but this result is supported only with a probability of 70%.
+Finally, incomplete granulomas compared to complete ones are more likely to be classified in high histological grades.
+
+In this type of models it is more effective to visualize, at least for the most relevant predictors, the marginal effects, i.e. by keeping the other predictor values constant, observing how the probability of a granuloma of being classified in one of the four histological degrees varies as the predictor varies.
+
+The following graphs show the effects of the predictors: size, number of granulomas, completeness, number of mnc.
+
+```{r echo=FALSE , fig.height=5, fig.width=10, message=FALSE, warning=FALSE, paged.print=FALSE}
+p <- conditional_effects(mod2, categorical = TRUE, effects = "sArea")
+p[["sArea:cats__"]]$effect2__ <- recode(p[["sArea:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p <- as_tibble(p[[1]])
+scale <- attr(dt2$sArea, "scaled:scale")
+center <- attr(dt2$sArea,"scaled:center")
+
+p <- p %>%
+  mutate(sArea = sArea* scale + center)
+
+ 
+ ggplot(p, aes(x = sArea, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of Granouloma area") + 
+  facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of granuloma area  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 10) + theme(legend.position = "none")
+ 
+``` 
+
+
+```{r echo=FALSE, , fig.height=5, fig.width=10, message=FALSE, warning=FALSE, paged.print=FALSE}
+p2 <- conditional_effects(mod2, categorical = TRUE, effects = "sngr")
+
+p2[["sngr:cats__"]]$effect2__ <- recode(p2[["sngr:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p2 <- as_tibble(p2[[1]])
+scale <- attr(dt2$sngr, "scaled:scale")
+center <- attr(dt2$sngr,"scaled:center")
+
+p2 <- p2 %>%
+  mutate(sngr = sngr*scale + center)
+
+ggplot(p2, aes(x = sngr, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of number of granuloma per lymph node") + 
+   facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of number of granuloma per lymph node  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 10) + theme(legend.position = "none")
+
+```
+
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE, paged.print=FALSE}
+p3 <- conditional_effects(mod2, categorical = TRUE, effects = "smnc")
+
+p3[["smnc:cats__"]]$effect2__ <- recode(p3[["smnc:cats__"]]$effect2__ , 
+                                        '1' = "Grade 1", 
+                                        '2' = "Grade 2", 
+                                        '3' = "Grade 3", 
+                                        '4' = "Grade 4")
+p3 <- as_tibble(p3[[1]])
+
+scale <- attr(dt2$smnc, "scaled:scale")
+center <- attr(dt2$smnc,"scaled:center")
+
+p3 <- p3 %>%
+  mutate(smnc = smnc*scale + center)
+
+ggplot(p3, aes(x = smnc, y = estimate__, color = effect2__)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__, fill = effect2__), 
+              alpha = .5, col = NA) +
+  ylab("Probability") +
+  xlab("ln of number of MNC per granuloma") + 
+   facet_grid(~ effect2__) +
+  scale_color_manual(values = c("blue", "blue","blue","blue"))+
+  scale_fill_manual(values = c("gray","gray","gray","gray"))   + theme_ipsum() + theme(legend.position = "") +
+  labs(title = "Conditional effects of log of number of MNC per granuloma  on the distribution of maturity grade of granuloma"
+      ) + theme_ipsum_rc(plot_title_size = 10) + theme(legend.position = "none")
+```
+
+
 
 
