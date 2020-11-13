@@ -23,6 +23,9 @@ library(here)
 library(knitr)
 library(kableExtra)
 library(flextable)
+library(see)
+library(bayestestR)
+library(parameters)
 
 
 dt <- readRDS(here("data", "processed", "dt.RDS"))
@@ -72,6 +75,13 @@ dtM <- lnf %>%
           MNC = ifelse(mMNC == 0, "No", "Si"), 
           Micro = ifelse(Micro == "P", 1, 0))
 
+####modelli###
+
+load(here("data", "processed", "mod3.RData"))
+
+
+
+
 ```
 
 
@@ -90,10 +100,8 @@ On the basis of the nature of the outcome variable, we adapted specific regressi
 
 For this analysis, the statistical unit is the single lymph node and predictors used were:
 
-* **Size of the lymph node**: Diameter calculated from the area and then standardized in z-score
 * **NAF**: presence of acid fast bacteria in lymph node granulomas. This variable was obtained by calculating for each single lymph node the average number of bacteria present in the various granulomas and then categorizing the lymph node itself as NAF = 1 when the average was greater than 0 and NAF = 0 (i.e. absence of acid-resistant bacteria) in the case of averages equal to 0.
 * **MNC**: similarly to what was done for NAF was done for the categorization of lymph nodes on the basis of the presence or absence of cells in granulomas.
-* **NGR**: total number of granulomas per lymph node used in the model after logarithmic transformation.
 * **sG1, sG2, sG3, sG4**: to grasp the influence that the histological grade of granulomas has on the microbiological state of a lymph node, we constructed four new variables, one for each histological grade, which identify the proportions of granulomas of the different grades for each single lymph node . For each lymph node we calculated the number of granulomas of the different histological grades and then we divided it by the total number of granulomas (**NGR**) per lymph node, thus obtaining a value between 0 and 1 which corresponds to the proportion of granulomas of the different grades. For example, 16 granulomas were observed in lymph node # 8, of which 0 of Grade 1 and 2, 13 of grade 3 and 3 of grade 4, so for lymph nodes 8 we will have this profile sG1 = 0, sG2 = 0, sG3 = 13/16 (0.81), sG4 = 3/16 (0.19).
 By way of example we report in the following table lymph nodes and their profile in relation to the microbiological status to the proportion of granulomas of different histological grades and the total number of granulomas.
 
@@ -140,6 +148,9 @@ Bayesian posterior estimates of the parameters  were then summarized in table us
 **Probability Direction (PD)** can be interpreted as the probability that a parameter (described by its posterior distribution) is strictly positive (whichever is the most probable) and it varies between 50% and 100%. PD is defined as the proportion of the posterior distribution that is of the median's sign (Makowski....2019) 
 
 **Region of Practical Equivalence (ROPE)** is defined as the percentage of the whole posterior distribution that lies within a Region of Practical Equivalence (ROPE) defined as range from -0.1 to 0.1 for linear regression and its equivalent, -0.18 to 0.18 for logistic models (based on the $\pi/\sqrt3$ formula to convert log odds ratios to standardized differences (Cohen....)
+
+
+
 
 
 
@@ -193,7 +204,44 @@ $$
 The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
 
 Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@ makowski2019indices]. 
-In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects as described by (paul burkner)
 
+In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects of relevant predictors, as described by (paul burkner). 
+
+
+
+
+RESULTS
+
+
+**MICRO**
+
+The model results: median of posterior estimated coefficients, 95 intervals of credibility, Probability Direction, and Rope are shown in the table 1.
+
+```{r echo=FALSE}
+t1 <- model_parameters(mod3, effects= "fixed", ci = 0.95)
+num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage", "Rhat", "ESS")
+ft <-  flextable(t1)
+ft <- colformat_num(x = ft, j = num_keys, big.mark = ",", digits = 2, na_str = "missing")
+ft <- autofit(ft)
+ft
+```
+
+Fig.1 report the posterior diastributions of estimated coefficents For each predictor, the distribution of the estimate of the regression coefficient is reported and the area corresponding to the values with negative effect and those with positive effect is indicated with different colors. Considering that the total area of the distribution of the values of the coefficients estimates is equal to 1 (100%), it is possible to calculate the area corresponding to the positive and negative values. In this way we obtain a measure of the importance of the effect estimated by the model called P_direction (PD). 
+
+
+```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+p1<-p_direction(mod3)
+x <- plot(p1) 
+levels(x[["data"]][["y"]]) <- c("presence of MNC", "presence of NAF", "G1", "G2", "G3", "G4", "Intercept")
+plot(x)+
+ labs(title = "",  x = "Bayesian posterior distribution of estimate", y= "Predictors") +
+  theme_ipsum_rc(plot_title_size = 10)  +scale_fill_brewer(palette="Blues")
+```
+
+
+
+**Histo**
 
 

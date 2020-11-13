@@ -58,7 +58,12 @@ fakeMod <- brm(Yfake ~ sG4 + sG3 + sG2 + sG1  + Lngr + Naf + MNC + Ds,
 
 pp_check(fakeMod, type = "error_hist")
 
+
+
 ####MODEL#####
+
+formula <- Micro ~ 1 + sG4 + sG3 + sG2 + sG1 + Ds + Lngr + Naf + MNC
+
 mod1 <- brm(formula = formula,
              family = bernoulli("logit"), 
              prior = myprior,
@@ -68,6 +73,27 @@ mod1 <- brm(formula = formula,
              ))
 mod2 <- update(mod1, . ~ . - Ds, newdata = dtM)
 mod3 <- update(mod2, . ~ . - Lngr,newdata = dtM)
+
+
+
+loo(mod1, mod2, mod3, moment_match = TRUE)
+
+kfm <- kfold(mod1, K=10)
+kfm2 <- kfold(mod2,K=10)
+kfm3 <- kfold(mod3, K=10)
+
+options(digits = 2)
+kf <- loo_compare(kfm, kfm2, kfm3)
+
+kf <- as.data.frame(kf)
+
+kf <- kf %>% 
+  select(-5,-6)
+kable(kf,booktabs = T, 
+      caption = "Confronto tra modelli mediante K-fold cross-validation") %>% 
+  kable_styling()
+
+
 
 
 # color_scheme_set("red")
@@ -196,7 +222,7 @@ pdr %>%
 plot(pd[4:8,])
 
 
-
+load(here("data", "processed", "mod3.RData"))
 
 
 ####g1 grafico distribuzione n.granulomi per grado#####
