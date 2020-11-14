@@ -118,9 +118,9 @@ Two outcome variables of interest were identified
 *  **Micro** microbiological status of the lymph nodes (dichotomous variable Pos / Neg)
 *  **Histo** histological grade of granulomas (ordinal variable with four levels: g1 / g2 / g3 / g4)
 
-On the basis of the nature of the outcome variable, we adapted specific Bayesian regression models with the aim of identifying which variables among those measured significantly influence the outcomes.  In this sense, the variables take on the meaning of predictors, therefore able to predict the outcome value with some degree of error.
+On the basis of the nature of the outcome variable, we adapted specific Bayesian regression models with the aim of identifying which variables among those measured significantly influence the outcomes.   We intend this models as descriptive models [@berk2010you] not aimed at prediction, but for capturing the associations between the dependent and independent variables rather for causal inferences or for prediction. 
 
-Bayesian statistics focuses on the posterior distribution $p(θ|Y)$ where θ are the model parameters (unknown quantities) and Y are the data (known quantities) to condition on. The posterior distribution is generally computed as 
+**Bayesian statistics** focuses on the posterior distribution $p(θ|Y)$ where θ are the model parameters (unknown quantities) and Y are the data (known quantities) to condition on. The posterior distribution is generally computed as 
 
 $$ p(\theta|Y) = \frac{p(Y|\theta)p(\theta)}{p(Y)}$$
 
@@ -141,7 +141,7 @@ Monte-Carlo (MCMC) methods to obtain samples (i.e., random values) from the post
 distribution. Such sampling algorithms are computationally very intensive and thus fitting
 models using Bayesian statistics is usually much slower than in frequentist statistics. However.
 advantages of Bayesian statistics—such as greater modeling flexibility, prior distributions,
-and more informative results—are often worth the increased computational cost.(burker, mcElreath, Gelman)
+and more informative results—are often worth the increased computational cost [@burkner2019ordinal; @gelman2020regression; @mcelreath2020statistical]
 
 
 ## Micro 
@@ -150,7 +150,7 @@ For this analysis, the statistical unit is the single lymph node and predictors 
 
 * **NAF**: presence of acid fast bacteria in lymph node granulomas. This variable was obtained by calculating for each single lymph node the average number of bacteria present in the various granulomas and then categorizing the lymph node itself as NAF = 1 when the average was greater than 0 and NAF = 0 (i.e. absence of acid-resistant bacteria) in the case of averages equal to 0.
 * **MNC**: similarly to what was done for NAF was done for the categorization of lymph nodes on the basis of the presence or absence of cells in granulomas.
-* **sG1, sG2, sG3, sG4**: to grasp the influence that the histological grade of granulomas has on the microbiological state of a lymph node, we constructed four new variables, one for each histological grade, which identify the proportions of granulomas of the different grades for each single lymph node . For each lymph node we calculated the number of granulomas of the different histological grades and then we divided it by the total number of granulomas (**NGR**) per lymph node, thus obtaining a value between 0 and 1 which corresponds to the proportion of granulomas of the different grades. For example, 16 granulomas were observed in lymph node # 8, of which 0 of Grade 1 and 2, 13 of grade 3 and 3 of grade 4, so for lymph nodes 8 we will have this profile sG1 = 0, sG2 = 0, sG3 = 13/16 (0.81), sG4 = 3/16 (0.19).
+* **G1, G2, G3, G4**: to grasp the influence that the histological grade of granulomas has on the microbiological state of a lymph node, we constructed four new variables, one for each histological grade, which identify the proportions of granulomas of the different grades for each single lymph node . For each lymph node we calculated the number of granulomas of the different histological grades and then we divided it by the total number of granulomas (**NGR**) per lymph node, thus obtaining a value between 0 and 1 which corresponds to the proportion of granulomas of the different grades. For example, 16 granulomas were observed in lymph node # 8, of which 0 of Grade 1 and 2, 13 of grade 3 and 3 of grade 4, so for lymph nodes 8 we will have this profile G1 = 0, G2 = 0, G3 = 13/16 (0.81), G4 = 3/16 (0.19).
 By way of example we report in the following table lymph nodes and their profile in relation to the microbiological status to the proportion of granulomas of different histological grades and the total number of granulomas.
 
 \
@@ -159,26 +159,26 @@ By way of example we report in the following table lymph nodes and their profile
 
 ```{r echo=FALSE}
 dtM %>% 
-  select (Idlinf, Micro, sG1, sG2, sG3, sG4, NGR = ngr) %>% 
+  select (Idlinf, Micro, G1 = sG1, G2 =sG2, G3 = sG3, G4 =sG4, NGR = ngr) %>% 
   slice_head(n = 5) %>% 
   round(., 2) %>% 
   flextable()
   
 ```
 
-**Micro** was modeled using a Bayesian General Linear Model(McElreath) . We consider the observed positive microbiological status M as a Bernoulli realizations of a random process with probability p to be positive: 
+**Micro** was modeled using a Bayesian General Linear Model [@mcelreath2020statistical] . We consider the observed positive microbiological status M as a Bernoulli realizations of a random process with probability **p** to be positive: 
 
 $$M_i \sim Bernoulli(p)$$
-Then p was modeled using **logit link** function : 
+Then **p** was modeled using **logit link** function : 
 
-$$\text{logit(p)} = \alpha + \beta*X $$
+$$\text{logit(p)} = \alpha + \beta X $$
 Where X is the predictors design matrix; $\alpha$ is the intercept parameter and $\beta$ is the matrix of predictors regression coefficients.  
  The **logit link** maps a parameter that is defined as a probability mass, and therefore constrained to lie between zero and one, onto a linear model that can take on any real value. The logit function itself is defined as the _log-odds_ : 
  $$logit(p_i) = \text{log} \frac{p_i}{1-p_i}$$
 The "odds" of an event are just the probability it happens divided by the probability it does not happen.
 So we can write: 
 
-$$\text{log} \frac{p_i}{1-p_i} = \alpha + \beta*X$$
+$$\text{log} \frac{p_i}{1-p_i} = \alpha + \beta X$$
 
 from which it can be derived $p_i$ :
 
@@ -186,16 +186,16 @@ $$p_i=\frac{e^{(\alpha + \beta X)}}{1+e^{(\alpha + \beta X)}}$$
 The above function is usually called **LOGISTIC**. In this context, it is also called the **INVERESE-LOGIT**, because it inverts the logti transform.
 
 
-For both parameters ($\alpha$ and $\beta$) weakly uninformative priors were selected according to Gelman :
+For both parameters ($\alpha$ and $\beta$) weakly uninformative priors were selected according to @mcelreath2020statistical :
  $$\alpha \sim Normal(0, 1)$$    
  $$\beta \sim Normal (0, 1)$$
-The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
+The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@burkner2017brms]package was used as the interface of the STAN language [@gelman2015stan] implemented in R in the rstan [@team2016rstan] package. 
 
-Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@ makowski2019indices].
+Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@makowski2019indices]
 
-**Probability Direction (PD)** can be interpreted as the probability that a parameter (described by its posterior distribution) is strictly positive (whichever is the most probable) and it varies between 50% and 100%. PD is defined as the proportion of the posterior distribution that is of the median's sign (Makowski....2019) 
+**Probability Direction (PD)** can be interpreted as the probability that a parameter (described by its posterior distribution) is strictly positive (whichever is the most probable) and it varies between 50% and 100%. PD is defined as the proportion of the posterior distribution that is of the median's sign  [@makowski2019indices]
 
-**Region of Practical Equivalence (ROPE)** is defined as the percentage of the whole posterior distribution that lies within a Region of Practical Equivalence (ROPE) defined as range from -0.1 to 0.1 for linear regression and its equivalent, -0.18 to 0.18 for logistic models (based on the $\pi/\sqrt3$ formula to convert log odds ratios to standardized differences (Cohen....)
+**Region of Practical Equivalence (ROPE)** is defined as the percentage of the whole posterior distribution that lies within a Region of Practical Equivalence (ROPE) defined as range from -0.1 to 0.1 for linear regression and its equivalent, -0.18 to 0.18 for logistic models (based on the $\pi/\sqrt3$ formula to convert log odds ratios to standardized differences [@makowski2019indices; @kruschke2014doing; @cohen1992statistical ]
 
 
 
@@ -215,7 +215,7 @@ For this analysis, the statistical unit is the single granuloma and predictors u
 * **IdLinf**: code identifier of lymph (used as a "random" variable in the model)
 
 
-In this case, a Bayesian ordinal regression model was fitted according to (Burkner).  The ordinal regression models are of three different types: 
+In this case, a Bayesian ordinal regression model was fitted according to @burkner2019ordinal.  The ordinal regression models are of three different types: 
 
 * **Cumulative Model (CM)**
 * **Sequential Model (SM)**
@@ -223,7 +223,7 @@ In this case, a Bayesian ordinal regression model was fitted according to (Burkn
 
 The **CM** assume that the observed ordinal variable **Y**, the histopatologic grade of granulomas in our case, originates from the categorization of a latent (not observed) continuous variable $\hat{Y}$. To model this categorization process, the **CM** assumes that there are _K_ theresholds $\tau_k$. In our study there are  $K+1 = 4$ response categoriee, and therefore $K=3$ thresholds
 
-For many ordinal variable, the assumption of a single underlying continuos variable may not be appropriate. If the response can be understood as being the result of a sequential process, such that a higher response category is possible only after all lower categories are achieved, the **SM** model as proposed by Tutz (1990) is usually appropriate. In our study this type of model assumes that the different classes of the outcome variable (in this case the histological grade) are the expression of a sequential process for which, for example, a granuloma is classified as grade 4, after having "evolved" from the previous grades. The **AC** is a widely used ordinal model in item-response theory and is applied in many large scale assessment studies. AC is very different to the CM and SM because it is difficult to think of a natural process leading to it. AC can be chosen for its mathematical convenience rather than any quality of interpretation. 
+For many ordinal variable, the assumption of a single underlying continuos variable may not be appropriate. If the response can be understood as being the result of a sequential process, such that a higher response category is possible only after all lower categories are achieved, the **SM** model as proposed by [@tutz1997sequential] is usually appropriate. In our study this type of model assumes that the different classes of the outcome variable (in this case the histological grade) are the expression of a sequential process for which, for example, a granuloma is classified as grade 4, after having "evolved" from the previous grades. The **AC** is a widely used ordinal model in item-response theory and is applied in many large scale assessment studies. AC is very different to the CM and SM because it is difficult to think of a natural process leading to it. AC can be chosen for its mathematical convenience rather than any quality of interpretation. 
 
 We choosed **SM**  because the assumption of the model with respect to the variable outcome is consistent with the histological development of the granulomas.  The model is further complicated by the hierarchical structure of the data, whereby observations made at the granuloma level are nested under the lymph nodes. So we fitted a multilevel ordinal sequential model with **Idlymph** as random effect. 
 
@@ -234,9 +234,9 @@ where $\eta$ is the linear predictor: $\beta X$  where  $\beta$ is the matrix of
 
 So we can formulate the bayesian model as:
 
-$\text{Histo} \sim \text{ordered-logit}(\eta, k) \; \; \; \; \, \, \text{} \text{probability of data}$
+$\text{Histo} \sim \text{ordered-logit}(\eta, k)$
 
-$\eta = \alpha_{[Idlinf]}+\beta X \,\,\,\,\, \text{linear model}$
+$\eta = \alpha_{[Idlinf]}+\beta X$
 
 with this priors : 
 
@@ -249,11 +249,11 @@ k\sim Normal(0,5) \\
   \beta \sim Normal(0,5)
 \end{aligned}
 $$
-The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@brms] package was used as the interface of the STAN [@ gelman2015stan] language implemented in R in the rstan [@rstan] package. 
+The model parameter estimates were obtained by sampling with the Hamiltonian Monte Carlo (HMC) algorithm using four chains, with 4000 iterations of which 1000 were warmup (excluded after sampling). For this model, the brms [@burkner2017brms]package was used as the interface of the STAN language [@gelman2015stan] implemented in R in the rstan [@team2016rstan] package. 
 
-Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@ makowski2019indices]. 
+Bayesian posterior estimates of the parameters  were then summarized in table using the median of the posterior distribution, the 95% credibility intervals, the **Probability Direction (PD)**, as a measure of the importance of the effects of the parameters, and the **Region of Practical Equivalence (ROPE)** as an index of significance as reported by [@makowski2019indices]
 
-In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects of relevant predictors, as described by (paul burkner). 
+In order to show how a particular predictor statistically influences the distribution of Histological grade of granulomas while holding the other predictors costant, we plot the conditional effects of relevant predictors, as described by [@burkner2017brms].
 
 
 RESULTS
@@ -266,7 +266,14 @@ The model results: median of posterior estimated coefficients, 95 intervals of c
 ```{r echo=FALSE}
 t1 <- model_parameters(mod3, effects= "fixed", ci = 0.95)
 num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage")
-#levels(as.factor(t1$Parameter)) <- c("Intercept", "presence of MNC", "presence of NAF", "G1","G2","G3","G4")
+
+t1$Parameter <- factor(t1$Parameter)
+  
+t1 <- t1 %>% data.frame() 
+t1$Parameter <- fct_recode(t1$Parameter,  Intercept  = "b_Intercept", "presence of MNC" = "b_MNCSi", "presence of NAF" = "b_NafSi", 
+             G1 = "b_sG1", G2 = "b_sG2", G3 = "b_sG3", G4 = "b_sG4")
+
+
 ft <-  flextable(t1[,-c(7:8)])
 ft <- colformat_num(x = ft, j = num_keys, big.mark = ",", digits = 2, na_str = "missing")
 ft <- autofit(ft)
@@ -291,9 +298,17 @@ However, the relevance of the predictors in terms of distance from 0 is not part
 **Histo**
 The model results: median of posterior estimated coefficients, 95 intervals of credibility, Probability Direction, and % in Rope are shown in the table 2. 
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 t2 <- model_parameters(mod2, effects= "fixed", ci = 0.95)
 num_keys <-  c("Median", "CI_low", "CI_high", "pd", "ROPE_Percentage")
+
+t2$Parameter <- factor(t2$Parameter)
+t2 <- t2 %>% data.frame()  
+t2$Parameter <- fct_recode(t2$Parameter,   "Completness Gr (I vs C)"="b_GrcomplI", 
+              Intercept_1 = "b_Intercept.1.", Intercept_2 = "b_Intercept.2.",Intercept_3 = "b_Intercept.3.",
+              "Micro (Pos vs Neg)" = "b_MicroP", StdzArea = "b_sArea" , StdzLn_MNC = "b_smnc" , StdzLn_NAF = "b_snaf", 
+              StdzLn_NGR = "b_sngr" )
+
 ft <-  flextable(t2[,-c(7:8)])
 ft <- colformat_num(x = ft, j = num_keys, big.mark = ",", digits = 2, na_str = "missing")
 ft <- autofit(ft)
@@ -304,7 +319,7 @@ Fig.2 report the posterior distributions of estimated coefficents For each predi
 ```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE, paged.print=FALSE}
 p2<-p_direction(mod2)
 y <- plot(p2) 
-levels(y[["data"]][["y"]]) <- c("StdzNgr", "Micro_P", "StdzlnMNC", "StdzlnNAF", "GrCompl_I", "StadzArea", "Intercept_3", "Intercept_2", "Intercept_1")
+levels(y[["data"]][["y"]]) <- c("StdzLn_NGR", "Micro (Pos vs Neg)", "StdzLn_MNC", "StdzLn_NAF", "Completness Gr (I vs C)", "StdzArea", "Intercept_3", "Intercept_2", "Intercept_1")
  y+ labs(title = "", x = "Bayesian posterior distribution of estimate", y= "Predictors") +
   theme_ipsum_rc(plot_title_size = 10)  +scale_fill_brewer(palette="Blues")
 ```
@@ -406,5 +421,5 @@ ggplot(p3, aes(x = smnc, y = estimate__, color = effect2__)) +
 ```
 
 
-
+## References
 
