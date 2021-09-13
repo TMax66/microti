@@ -13,7 +13,7 @@ library(ggraph)
 library(igraph)
 
 
-dt %>% 
+x <- dt %>% 
   mutate(Grgrade=ifelse(Grgrade==1, "G1",
                         ifelse(Grgrade==2, "G2", 
                                ifelse(Grgrade==3, "G3", "G4")))) %>% 
@@ -24,7 +24,8 @@ dt %>%
   group_by(Idlinf, Micro, D,d, Grcompl,IDGr, Grgrade, MNC, NAF) %>% 
   summarise(ngr=n())%>% 
   pivot_wider( names_from = "Grgrade", values_from = ngr, values_fill = list(ngr=0)) %>% 
-  View()
+  group_by(NAF) %>% 
+  count()
 
 
 
